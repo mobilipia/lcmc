@@ -1063,6 +1063,7 @@ public final class ServicesInfo extends EditableInfo {
         hg.pickBackground();
         infoPanel = newPanel;
         infoPanelDone();
+        System.exit(0);
         return infoPanel;
     }
 
