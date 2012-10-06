@@ -22,6 +22,8 @@
 package lcmc.configs;
 
 import java.util.Arrays;
+import java.util.Collections;
+import java.util.ArrayList;
 
 /**
  * Here are common commands for all linuxes.
@@ -30,7 +32,8 @@ public final class DistResource extends java.util.ListResourceBundle {
     /** Sudo placeholder. */
     public static final String SUDO = "@DMCSUDO@";
     /** Get contents. */
-    @Override protected Object[][] getContents() {
+    @Override
+    protected Object[][] getContents() {
         return Arrays.copyOf(contents, contents.length);
     }
 
@@ -160,9 +163,12 @@ public final class DistResource extends java.util.ListResourceBundle {
         {"installGuiHelper", "installGuiHelper"}, // is treated specially by ssh class.
 
         {"GetHostAllInfo", SUDO + "@GUI-HELPER@ all"},
+        {"HostHWInfoDaemon", SUDO + "@GUI-HELPER@ hw-info-daemon"},
         {"GetHostHWInfo", SUDO + "@GUI-HELPER@ hw-info"},
         {"GetHostHWInfoLazy", "nice -n 19 " + SUDO + "@GUI-HELPER@ hw-info-lazy"},
         {"GetNetInfo",  SUDO + "@GUI-HELPER@ get-net-info"},
+
+        {"PingCommand", "while true; do echo; sleep 5; done"},
 
         /* heartbeat crm commands */
         {"CRM.cleanupResource", SUDO + "/usr/sbin/crm_resource -C -r @ID@ -H @HOST@"},
@@ -201,30 +207,15 @@ public final class DistResource extends java.util.ListResourceBundle {
         {"CRM.unmigrateResource",
          SUDO + "/usr/sbin/crm_resource -r @ID@ --un-migrate"},
 
-        /* gets all ocf resources and theirs meta-data */
-        /* TODO: buggy xml in heartbeat 2.0.8 in ftp and mysql */
-        /* TODO: implement version overwrite */
-        {"Heartbeat.2.0.8.getOCFParameters",
-         "export OCF_ROOT=/usr/lib/ocf;"
-         + "for s in `ls -1 /usr/lib/ocf/resource.d/heartbeat/"
-         + " | grep -v Pure-FTPd|grep -v mysql`;"
-         + " do /usr/lib/ocf/resource.d/heartbeat/$s meta-data 2>/dev/null;"
-         + "done"},
+        {"Heartbeat.getOCFParametersQuick",
+         SUDO + "@GUI-HELPER@ get-resource-agents quick;"},
+
+        {"Heartbeat.getOCFParametersConfigured",
+         SUDO + "@GUI-HELPER@ get-resource-agents configured;"},
 
         {"Heartbeat.getOCFParameters",
-         "export OCF_RESKEY_vmxpath=a;export OCF_ROOT=/usr/lib/ocf;"
-         + "for prov in `ls -1 /usr/lib/ocf/resource.d/`; do "
-         +  "for s in `ls -1 /usr/lib/ocf/resource.d/$prov/ `; do "
-         +  "echo -n 'provider:'; echo $prov;"
-         +  "echo -n 'master:';"
-         +  "grep -wl crm_master /usr/lib/ocf/resource.d/$prov/$s;echo;"
-         +   "/usr/lib/ocf/resource.d/$prov/$s meta-data 2>/dev/null; done;"
-         + "done;"
-         + "echo 'provider:heartbeat';"
-         + "echo 'master:';"
-         + SUDO + "@GUI-HELPER@ get-stonith-devices;"
-         + SUDO + "@GUI-HELPER@ get-old-style-resources;"
-         + SUDO + "@GUI-HELPER@ get-lsb-resources"},
+         SUDO + "@GUI-HELPER@ get-resource-agents;"},
+
         /* vmxpath env is needed so that vmware meta-data does not hang */
         {"Heartbeat.getClusterMetadata",
          SUDO + "@GUI-HELPER@ get-cluster-metadata"},
@@ -314,7 +305,7 @@ public final class DistResource extends java.util.ListResourceBundle {
 
         /* drbd commands */
         {"Drbd.getParameters", SUDO + "@GUI-HELPER@ get-drbd-xml"},
-        {"Drbd.getConfig",     "echo|" + SUDO + "/sbin/drbdadm dump-xml"},
+        {"Drbd.getConfig",     SUDO + "@GUI-HELPER@ get-drbd-info"},
 
         {"DRBD.get-gi",        "echo|" + SUDO + "/sbin/drbdadm @DRYRUN@ get-gi @RES-VOL@"},
         {"DRBD.attach",        "echo|" + SUDO + "/sbin/drbdadm @DRYRUN@ attach @RES-VOL@"},
@@ -386,7 +377,9 @@ public final class DistResource extends java.util.ListResourceBundle {
          SUDO + "/sbin/modprobe drbd"},
 
         {"HostBrowser.getCrmMon",
-         SUDO + "/usr/sbin/crm_mon -1"},
+         SUDO + "/usr/sbin/crm_mon -1Arfn 2>/dev/null"
+         + " || " + SUDO + "/usr/sbin/crm_mon -1rfn 2>/dev/null"
+         + " || " + SUDO + "/usr/sbin/crm_mon -1rn"},
         {"HostBrowser.getCrmConfigureShow",
          SUDO + "PAGER=cat /usr/sbin/crm configure show"},
 
@@ -413,29 +406,32 @@ public final class DistResource extends java.util.ListResourceBundle {
         {"VMSXML.GetData",
          SUDO + "@GUI-HELPER@ get-vm-info"},
 
+        {"VIRSH.Autostart",
+         SUDO + "/usr/bin/virsh @OPTIONS@ autostart @VALUE@ @DOMAIN@ 2>/dev/null"},
+
         {"VIRSH.Start",
-         SUDO + "virsh start @DOMAIN@"},
+         SUDO + "/usr/bin/virsh @OPTIONS@ start @DOMAIN@"},
 
         {"VIRSH.Shutdown",
-         SUDO + "virsh shutdown @DOMAIN@"},
+         SUDO + "/usr/bin/virsh @OPTIONS@ shutdown @DOMAIN@"},
 
         {"VIRSH.Destroy",
-         SUDO + "virsh destroy @DOMAIN@"},
+         SUDO + "/usr/bin/virsh @OPTIONS@ destroy @DOMAIN@"},
 
         {"VIRSH.Reboot",
-         SUDO + "virsh reboot @DOMAIN@"},
+         SUDO + "/usr/bin/virsh @OPTIONS@ reboot @DOMAIN@"},
 
         {"VIRSH.Suspend",
-         SUDO + "virsh suspend @DOMAIN@"},
+         SUDO + "/usr/bin/virsh @OPTIONS@ suspend @DOMAIN@"},
 
         {"VIRSH.Resume",
-         SUDO + "virsh resume @DOMAIN@"},
+         SUDO + "/usr/bin/virsh @OPTIONS@ resume @DOMAIN@"},
 
         {"VIRSH.Define",
-         SUDO + "virsh define @CONFIG@"},
+         SUDO + "/usr/bin/virsh @OPTIONS@ define @CONFIG@"},
 
         {"VIRSH.Undefine",
-         SUDO + "virsh undefine @DOMAIN@"},
+         SUDO + "/usr/bin/virsh @OPTIONS@ undefine @DOMAIN@"},
 
         {"Host.getConnectionStatus",
          "true"},
@@ -463,5 +459,119 @@ public final class DistResource extends java.util.ListResourceBundle {
 
         {"LVM.lvsnapshot",
          SUDO + "lvcreate -s -n@LVNAME@ -L@SIZE@ @DEVICE@"},
+
+        {"libvirt.lxc.libpath", "/usr/lib/libvirt"},
+        {"libvirt.xen.libpath", "/usr/lib/xen-default"},
+
+        /* config files */
+        {"ocf:heartbeat:apache.params",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "envfiles")))},
+
+        {"ocf:heartbeat:LVM.files",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "/etc/lvm/lvm.conf")))},
+
+        {"ocf:heartbeat:Dummy.params",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "state")))},
+
+        {"ocf:heartbeat:CTDB.files",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "/etc/sysconfig/ctdb",
+              "/etc/ctdb/nodes",
+              "/etc/ctdb/public_addresses",
+              "/etc/exports"
+              )))},
+
+        {"ocf:heartbeat:CTDB.params",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "smb_conf")))},
+
+        {"ocf:heartbeat:drbd.params",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "drbdconf")))},
+
+        {"ocf:linbit:drbd.params",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "drbdconf")))},
+
+        {"ocf:heartbeat:eDir88.params",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "eDir_config_file")))},
+
+        {"ocf:heartbeat:exportfs.files",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "/etc/exports")))},
+
+        {"ocf:heartbeat:Filesystem.files",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "/etc/fstab")))},
+
+        {"ocf:heartbeat:iSCSITarget.files",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "/etc/initiators.deny",
+              "/etc/initiators.allow")))},
+
+        {"ocf:heartbeat:mysql-proxy.params",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "defaults_file")))},
+
+        {"ocf:heartbeat:ManageRAID.files",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "/etc/conf.d/HB-ManageRAID")))},
+
+        {"ocf:heartbeat:nfsserver.files",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "/etc/exports")))},
+
+        {"ocf:lsb:nfs-common.files",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "/etc/exports")))},
+
+        {"ocf:lsb:nfs-kernel-server.files",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "/etc/exports")))},
+
+        {"ocf:heartbeat:oracle.files",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "/etc/oratab")))},
+
+        {"ocf:heartbeat:oralsnr.files",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "/etc/oratab")))},
+
+        {"ocf:heartbeat:portblock.files",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "/etc/csync2/csync2.cfg")))},
+
+        {"ocf:heartbeat:postfix.files",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "/etc/postfix/main.cf")))},
+
+        {"ocf:heartbeat:Raid1.params",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "raidconf")))},
+
+        {"ocf:heartbeat:SAPDatabase.files",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "/etc/opt/sdb")))},
+
+        {"ocf:heartbeat:SAPInstance.files",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "/etc/opt/sdb")))},
+
+        {"ocf:heartbeat:Squid.params",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "squid_conf")))},
+
+        {"ocf:heartbeat:vmware.params",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "vmxpath")))},
+
+        {"ocf:heartbeat:Xen.params",
+         Collections.unmodifiableList(new ArrayList<String>(Arrays.asList(
+              "xmfile")))},
+
     };
 }

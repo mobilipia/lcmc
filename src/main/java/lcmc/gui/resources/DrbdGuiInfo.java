@@ -24,7 +24,7 @@ package lcmc.gui.resources;
 import lcmc.Exceptions;
 import lcmc.gui.Browser;
 import lcmc.gui.ClusterBrowser;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.data.Cluster;
 import lcmc.data.DrbdXML;
 import lcmc.data.ConfigData;
@@ -32,8 +32,6 @@ import lcmc.data.AccessMode;
 import lcmc.data.Host;
 import lcmc.utilities.Tools;
 import lcmc.utilities.Unit;
-
-import javax.swing.ImageIcon;
 
 /**
  * this class holds info data, menus and configuration
@@ -50,7 +48,8 @@ abstract class DrbdGuiInfo extends EditableInfo {
     }
 
     /** Returns browser object of this info. */
-    @Override public final ClusterBrowser getBrowser() {
+    @Override
+    public final ClusterBrowser getBrowser() {
         return (ClusterBrowser) super.getBrowser();
     }
 
@@ -65,7 +64,8 @@ abstract class DrbdGuiInfo extends EditableInfo {
     }
 
     /** Returns the regexp of the parameter. */
-    @Override protected String getParamRegexp(final String param) {
+    @Override
+    protected String getParamRegexp(final String param) {
         return null;
     }
 
@@ -73,30 +73,33 @@ abstract class DrbdGuiInfo extends EditableInfo {
      * Checks the new value of the parameter if it is conforms to its type
      * and other constraints.
      */
-    @Override protected boolean checkParam(final String param,
-                                       final String newValue) {
+    @Override
+    protected boolean checkParam(final String param, final String newValue) {
         return getBrowser().getDrbdXML().checkParam(param, newValue);
     }
 
     /** Returns default value of the parameter. */
-    @Override public String getParamDefault(final String param) {
+    @Override
+    public String getParamDefault(final String param) {
         return getBrowser().getDrbdXML().getParamDefault(param);
     }
 
     /** Whether the parameter should be enabled. */
-    @Override protected String isEnabled(final String param) {
+    @Override
+    protected String isEnabled(final String param) {
         return null;
     }
 
 
     /** Returns the preferred value for the drbd parameter. */
-    @Override protected final String getParamPreferred(final String param) {
+    @Override
+    protected final String getParamPreferred(final String param) {
         return getBrowser().getDrbdXML().getParamPreferred(param);
     }
 
     /** Returns the possible values for the pulldown menus, if applicable. */
-    @Override protected final Object[] getParamPossibleChoices(
-                                                        final String param) {
+    @Override
+    protected final Object[] getParamPossibleChoices(final String param) {
         return getBrowser().getDrbdXML().getPossibleChoices(param);
     }
 
@@ -104,24 +107,28 @@ abstract class DrbdGuiInfo extends EditableInfo {
      * Returns the short description of the drbd parameter that is used as
      * a label.
      */
-    @Override protected final String getParamShortDesc(final String param) {
+    @Override
+    protected final String getParamShortDesc(final String param) {
         return getBrowser().getDrbdXML().getParamShortDesc(param);
     }
 
     /**
      * Returns a long description of the parameter that is used for tool tip.
      */
-    @Override protected final String getParamLongDesc(final String param) {
+    @Override
+    protected final String getParamLongDesc(final String param) {
         return getBrowser().getDrbdXML().getParamLongDesc(param);
     }
 
     /** Returns whether this drbd parameter is required parameter. */
-    @Override protected final boolean isRequired(final String param) {
+    @Override
+    protected final boolean isRequired(final String param) {
         return getBrowser().getDrbdXML().isRequired(param);
     }
 
     /** Returns whether this parameter is advanced. */
-    @Override protected boolean isAdvanced(final String param) {
+    @Override
+    protected boolean isAdvanced(final String param) {
         if (!Tools.areEqual(getParamDefault(param),
                             getParamSaved(param))) {
             /* it changed, show it */
@@ -131,35 +138,39 @@ abstract class DrbdGuiInfo extends EditableInfo {
     }
 
     /** Returns access type of this parameter. */
-    @Override protected final ConfigData.AccessType getAccessType(
-                                                         final String param) {
+    @Override
+    protected final ConfigData.AccessType getAccessType(final String param) {
         return getBrowser().getDrbdXML().getAccessType(param);
     }
 
     /** Whether the parameter should be enabled only in advanced mode. */
-    @Override protected final boolean isEnabledOnlyInAdvancedMode(
-                                                         final String param) {
+    @Override
+    protected final boolean isEnabledOnlyInAdvancedMode(final String param) {
         return false;
     }
 
     /** Returns whether this drbd parameter is of integer type. */
-    @Override protected final boolean isInteger(final String param) {
+    @Override
+    protected final boolean isInteger(final String param) {
         return getBrowser().getDrbdXML().isInteger(param);
     }
 
     /** Returns whether this drbd parameter is of label type. */
-    @Override protected final boolean isLabel(final String param) {
+    @Override
+    protected final boolean isLabel(final String param) {
         return getBrowser().getDrbdXML().isLabel(param);
     }
 
     /** Returns whether this drbd parameter is of time type. */
-    @Override protected final boolean isTimeType(final String param) {
+    @Override
+    protected final boolean isTimeType(final String param) {
         /* not required */
         return false;
     }
 
     /** Returns whether this parameter has a unit prefix. */
-    @Override protected final boolean hasUnitPrefix(final String param) {
+    @Override
+    protected final boolean hasUnitPrefix(final String param) {
         return getBrowser().getDrbdXML().hasUnitPrefix(param);
     }
 
@@ -179,7 +190,8 @@ abstract class DrbdGuiInfo extends EditableInfo {
      * Returns whether the parameter is of the boolean type and needs the
      * checkbox.
      */
-    @Override protected final boolean isCheckBox(final String param) {
+    @Override
+    protected final boolean isCheckBox(final String param) {
         final String type = getBrowser().getDrbdXML().getParamType(param);
         if (type == null) {
             return false;
@@ -191,17 +203,19 @@ abstract class DrbdGuiInfo extends EditableInfo {
     }
 
     /** Returns the type of the parameter (like boolean). */
-    @Override protected final String getParamType(final String param) {
+    @Override
+    protected final String getParamType(final String param) {
         return getBrowser().getDrbdXML().getParamType(param);
     }
 
     /**
      * Returns the widget that is used to edit this parameter.
      */
-    @Override protected GuiComboBox getParamComboBox(final String param,
-                                                     final String prefix,
-                                                     final int width) {
-        GuiComboBox paramCb;
+    @Override
+    protected Widget createWidget(final String param,
+                                  final String prefix,
+                                  final int width) {
+        Widget paramWi;
         final Object[] possibleChoices = getParamPossibleChoices(param);
         getResource().setPossibleChoices(param, possibleChoices);
         if (hasUnitPrefix(param)) {
@@ -222,7 +236,7 @@ abstract class DrbdGuiInfo extends EditableInfo {
             if (index > -1) {
                 unitPart = unit.substring(index);
             }
-            GuiComboBox.Type type = null;
+            Widget.Type type = null;
             Unit[] units = null;
             if ("".equals(unit)) {
                 units = new Unit[]{
@@ -269,26 +283,26 @@ abstract class DrbdGuiInfo extends EditableInfo {
                 };
             }
 
-            paramCb = new GuiComboBox(selectedValue,
-                                      getPossibleChoices(param),
-                                      units,
-                                      GuiComboBox.Type.TEXTFIELDWITHUNIT,
-                                      null, /* regexp */
-                                      width,
-                                      null, /* abbrv */
-                                      new AccessMode(
-                                           getAccessType(param),
-                                           isEnabledOnlyInAdvancedMode(param)));
+            paramWi = new Widget(selectedValue,
+                                 getPossibleChoices(param),
+                                 units,
+                                 Widget.Type.TEXTFIELDWITHUNIT,
+                                 null, /* regexp */
+                                 width,
+                                 null, /* abbrv */
+                                 new AccessMode(
+                                      getAccessType(param),
+                                      isEnabledOnlyInAdvancedMode(param)));
 
-            paramComboBoxAdd(param, prefix, paramCb);
+            widgetAdd(param, prefix, paramWi);
         } else {
-            paramCb = super.getParamComboBox(param, prefix, width);
+            paramWi = super.createWidget(param, prefix, width);
             if (possibleChoices != null
                 && !getBrowser().getDrbdXML().isStringType(param)) {
-                paramCb.setEditable(false);
+                paramWi.setEditable(false);
             }
         }
-        return paramCb;
+        return paramWi;
     }
 
     /**

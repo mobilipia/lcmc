@@ -29,7 +29,8 @@ import java.util.Arrays;
 public final class TextResource extends java.util.ListResourceBundle {
 
     /** Get contents. */
-    @Override protected Object[][] getContents() {
+    @Override
+    protected Object[][] getContents() {
         return Arrays.copyOf(contents, contents.length);
     }
 
@@ -74,6 +75,15 @@ public final class TextResource extends java.util.ListResourceBundle {
 
         {"MainMenu.Help",
          "Help"},
+
+        {"MainMenu.Edit",
+         "Edit"},
+
+        {"MainMenu.Copy",
+         "Copy"},
+
+        {"MainMenu.Paste",
+         "Paste"},
 
         {"MainMenu.About",
          "About"},
@@ -193,6 +203,9 @@ public final class TextResource extends java.util.ListResourceBundle {
 
         {"Dialog.Dialog.Ok",
          "OK"},
+
+        {"Dialog.Dialog.Save",
+         "Save"},
 
         {"Dialog.Host.NewHost.Title",
          "Host Wizard"},
@@ -352,9 +365,7 @@ public final class TextResource extends java.util.ListResourceBundle {
          + "components are already installed. If not, you can press "
          + "one of the 'Install' buttons to install them. You can check "
          + "for DRBD upgrade as well if installed DRBD was detected.<br>"
-         + "You can also choose a <b>Pacemaker</b> installation method. "
-         + "The newest packages for many different distributions are in "
-         + "Clusterlabs repositories."},
+         + "You can also choose a <b>Pacemaker</b> installation method. "},
 
         {"Dialog.Host.CheckInstallation.Drbd.NotInstalled",
          "DRBD is not installed. Click 'Install' button to install a new "
@@ -887,6 +898,20 @@ public final class TextResource extends java.util.ListResourceBundle {
 + "* realvnc, released under the terms of the GPL License\n"
          },
 
+        {"Dialog.EditConfig.Title",
+         "Edit "},
+
+        {"Dialog.EditConfig.Backup.Button",
+         "Make Backup"},
+
+        {"Dialog.EditConfig.Loading",
+         "loading..."},
+
+        {"Dialog.EditConfig.NewConfig",
+         "<new config>"},
+
+        {"Dialog.EditConfig.DifferentFiles",
+         "WARNING: files differ across nodes"},
 
         {"Dialog.Cluster.Finish.Title",
          "Finish"},
@@ -955,7 +980,7 @@ public final class TextResource extends java.util.ListResourceBundle {
          + "filesystem on it, but in this case you have to choose one host "
          + "as a primary, choose the file system and press "
          + "\"Create File System\" button. <b>If you skip initial full sync, "
-         + "make sure that you create the filesystem there!</b>"},
+         + "make sure that you create the filesystem there</b>, now or later."},
 
         {"Dialog.DrbdConfig.CreateFS.NoHostString",
          "none"},
@@ -1087,6 +1112,12 @@ public final class TextResource extends java.util.ListResourceBundle {
         {"Dialog.vm.Storage.Description",
          "Enter a storage for this virtual machine."},
 
+        {"Dialog.vm.Filesystem.Title",
+         "Filesystem"},
+
+        {"Dialog.vm.Filesystem.Description",
+         "Enter a filesystem for this virtual machine."},
+
         {"Dialog.vm.Network.Title",
          "Network Interface Configuration"},
 
@@ -1182,6 +1213,9 @@ public final class TextResource extends java.util.ListResourceBundle {
 
         {"ClusterBrowser.MigrateSubmenu",
          "More Migration Options"},
+
+        {"ClusterBrowser.FilesSubmenu",
+         "Edit Config Files"},
 
         {"ClusterBrowser.Host.Offline",
          "Offline"},
@@ -1368,7 +1402,7 @@ public final class TextResource extends java.util.ListResourceBundle {
          "Available Services"},
 
         {"ClusterBrowser.ClStatusFailed",
-         "<h2>Waiting for cluster status...</h2>"},
+         "<h2>Waiting for Pacemaker...</h2>"},
 
         {"ClusterBrowser.Hb.RemoveAllServices",
          "Remove All Services"},
@@ -1486,7 +1520,7 @@ public final class TextResource extends java.util.ListResourceBundle {
          "Do not manage by CRM"},
 
         {"ClusterBrowser.Hb.NoInfoAvailable",
-         "no info available"},
+         "unknown..."},
 
         {"ClusterBrowser.Hb.GroupStopped",
          "stopped (group)"},
@@ -1513,10 +1547,10 @@ public final class TextResource extends java.util.ListResourceBundle {
          "Order Only"},
 
         {"ClusterBrowser.HbUpdateResources",
-         "updating cluster resources..."},
+         "updating resource agents..."},
 
         {"ClusterBrowser.HbUpdateStatus",
-         "updating cluster status..."},
+         "updating Pacemaker status..."},
 
         {"ClusterBrowser.Drbd.RemoveEdge",
          "Remove DRBD Volume"},
@@ -1595,10 +1629,19 @@ public final class TextResource extends java.util.ListResourceBundle {
         {"ClusterBrowser.ClassesOverviewButton",
          "Classes Overview"},
 
-        {"ServicesInfo.AddConstraintPlaceholder",
-          "Add Constraint Placeholder"},
+        {"ClusterBrowser.ClusterStatusFailed",
+         "Pacemaker status not available"},
 
-        {"ServicesInfo.AddConstraintPlaceholder.ToolTip",
+        {"ServicesInfo.AddConstraintPlaceholderAnd",
+          "Add Constraint Placeholder (AND)"},
+
+        {"ServicesInfo.AddConstraintPlaceholderOr",
+          "Add Constraint Placeholder (OR)"},
+
+        {"ServicesInfo.AddConstraintPlaceholderAnd.ToolTip",
+          "Add constraint placeholder to create a resource set."},
+
+        {"ServicesInfo.AddConstraintPlaceholderOr.ToolTip",
           "Add constraint placeholder to create a resource set."},
 
         {"PtestData.ToolTip",
@@ -1617,7 +1660,7 @@ public final class TextResource extends java.util.ListResourceBundle {
          "Host Wizard"},
 
         {"HostBrowser.Drbd.NoInfoAvailable",
-         "no info available"},
+         "unknown..."},
 
         {"HostBrowser.Drbd.AddDrbdResource",
          "Add Mirrored Disk"},
@@ -1795,7 +1838,7 @@ public final class TextResource extends java.util.ListResourceBundle {
          "loading..."},
 
         {"HostBrowser.CRM.StandByOn",
-         "Go Into Standby"},
+         "Standby / Switchover"},
 
         {"HostBrowser.CRM.StandByOff",
          "Go Online"},
@@ -1823,7 +1866,7 @@ public final class TextResource extends java.util.ListResourceBundle {
          "Select..."},
 
         {"HostBrowser.Hb.NoInfoAvailable",
-         "no info available"},
+         "unknown..."},
 
         {"HostDrbdInfo.LVMMenu",
          "LVM"},
@@ -1858,8 +1901,14 @@ public final class TextResource extends java.util.ListResourceBundle {
         {"CRMXML.OptionalOptions",
          "Advanced Options"},
 
-        {"CRMXML.GetOCFParameters",
-         "Getting OCF parameters..."},
+        {"CRMXML.OtherOptions",
+         "Other Options"},
+
+        {"CRMXML.GetRAMetaData",
+         "Loading resource agents..."},
+
+        {"CRMXML.GetRAMetaData.Done",
+         "Resource agent meta data loaded."},
 
         {"CRMXML.TargetRole.ShortDesc",
          "Target Role"},
@@ -1914,10 +1963,50 @@ public final class TextResource extends java.util.ListResourceBundle {
         {"CRMXML.OrderSectionParams",
          "Order Parameters"},
 
-        {"GuiComboBox.Select",
+        {"CRMXML.stonith-timeout.ShortDesc",
+         "Stonith Timeout"},
+
+        {"CRMXML.stonith-timeout.LongDesc",
+         "How long to wait for the STONITH action to complete."},
+
+        {"CRMXML.stonith-priority.ShortDesc",
+         "Stonith Priority"},
+
+        {"CRMXML.stonith-priority.LongDesc",
+         "The priority of the stonith resource. The lower the number, the<br>"
+         + "higher the priority."},
+
+        {"CRMXML.pcmk_host_check.ShortDesc",
+         "PCMK Host Check"},
+
+        {"CRMXML.pcmk_host_check.LongDesc",
+         "How to determin which machines are controlled by the device.<br>"
+         + "<br>"
+         + "Allowed values: dynamic-list (query the device), static-list (check<br>"
+         + "the pcmk_host_list attribute), none (assume every device can fence<br>"
+         + "every machine)"},
+
+        {"CRMXML.pcmk_host_list.ShortDesc",
+         "PCMK Host List"},
+
+        {"CRMXML.pcmk_host_list.LongDesc",
+         "A list of machines controlled by this device (Optional unless<br>"
+         + "pcmk_host_check=static-list)."},
+
+        {"CRMXML.pcmk_host_map.ShortDesc",
+         "PCMK Host Map"},
+
+        {"CRMXML.pcmk_host_map.LongDesc",
+         "A mapping of host names to ports numbers for devices that do not<br>"
+         + "support host names.<br>"
+         + "<br>"
+         + "Eg. node1:1;node2:2,3 would tell the cluster to use port 1 for<br>"
+         + "node1 and ports 2 and 3 for node2<br>"},
+
+        {"Widget.Select",
          "Select..."},
 
-        {"GuiComboBox.NothingSelected",
+        {"Widget.NothingSelected",
          "<<nothing selected>>"},
 
         {"HeartbeatGraph.ColOrd",
@@ -2097,8 +2186,14 @@ public final class TextResource extends java.util.ListResourceBundle {
         {"VMSVirtualDomainInfo.Short.Os.Boot",
          "Boot Device"},
 
+        {"VMSVirtualDomainInfo.Short.Os.Boot.2",
+         "2nd Boot Device"},
+
         {"VMSVirtualDomainInfo.Short.Os.Loader",
          "Loader"},
+
+        {"VMSVirtualDomainInfo.Short.VirshOptions",
+         "Virsh options"},
 
         {"VMSVirtualDomainInfo.Short.Autostart",
          "Autostart"},
@@ -2111,6 +2206,9 @@ public final class TextResource extends java.util.ListResourceBundle {
 
         {"VMSVirtualDomainInfo.Short.Type",
          "Type"},
+
+        {"VMSVirtualDomainInfo.Short.Init",
+         "Init"},
 
 
         {"VMSVirtualDomainInfo.Short.Acpi",
@@ -2185,6 +2283,9 @@ public final class TextResource extends java.util.ListResourceBundle {
         {"VMSVirtualDomainInfo.AddNewDisk",
          "New Disk"},
 
+        {"VMSVirtualDomainInfo.AddNewFilesystem",
+         "New Filesystem"},
+
         {"VMSVirtualDomainInfo.AddNewInterface",
          "New Network Interface"},
 
@@ -2252,6 +2353,12 @@ public final class TextResource extends java.util.ListResourceBundle {
 
         {"ConstraintPHInfo.confirmRemove.No",
          "Cancel"},
+
+        {"ConstraintPHInfo.And",
+         "AND"},
+
+        {"ConstraintPHInfo.Or",
+         "OR"},
 
         {"ConfigData.OpMode.RO",
          "Read-Only"},
@@ -2340,6 +2447,9 @@ public final class TextResource extends java.util.ListResourceBundle {
         {"ServiceInfo.AlreadyStopped",
          "it is already stopped"},
 
+        {"ServiceInfo.LoadingMetaData",
+         "Loading meta data..."},
+
         {"DrbdInfo.CommonSection",
          "common "},
 
@@ -2363,5 +2473,135 @@ public final class TextResource extends java.util.ListResourceBundle {
 
         {"DrbdVolumeInfo.Device",
          "Device"},
+
+        {"PcmkMultiSelectionInfo.Selection",
+         "<h3>Selection:</h3>"},
+
+        {"PcmkMultiSelectionInfo.StopSelectedResources",
+         "Stop Selected Services"},
+
+        {"PcmkMultiSelectionInfo.StartSelectedResources",
+         "Start Selected Services"},
+
+        {"PcmkMultiSelectionInfo.StandByOn",
+         "Standby Selected Hosts"},
+
+        {"PcmkMultiSelectionInfo.StandByOff",
+         "Online Selected Hosts"},
+
+        {"PcmkMultiSelectionInfo.StopCorosync",
+         "Stop Corosync on Selected Hosts"},
+
+        {"PcmkMultiSelectionInfo.StopOpenais",
+         "Stop Openais on Selected Hosts"},
+
+        {"PcmkMultiSelectionInfo.StopHeartbeat",
+         "Stop Heartbeat on Selected Hosts"},
+
+        {"PcmkMultiSelectionInfo.StartCorosync",
+         "Start Corosync on Selected Hosts"},
+
+        {"PcmkMultiSelectionInfo.StartPacemaker",
+         "Start Pacemakerd on Selected Hosts"},
+
+        {"PcmkMultiSelectionInfo.StartOpenais",
+         "Start Openais on Selected Hosts"},
+
+        {"PcmkMultiSelectionInfo.StartHeartbeat",
+         "Start Heartbeat on Selected Hosts"},
+
+        {"PcmkMultiSelectionInfo.ChangeHostColor",
+         "Change Color of Selected Hosts"},
+
+        {"PcmkMultiSelectionInfo.confirmRemove.Title",
+         "Remove Selected Services"},
+
+        {"PcmkMultiSelectionInfo.confirmRemove.Desc",
+         "Are you sure you want to remove the selected services?"},
+
+        {"PcmkMultiSelectionInfo.confirmRemove.Yes",
+         "Remove"},
+
+        {"PcmkMultiSelectionInfo.confirmRemove.No",
+         "Cancel"},
+
+        {"PcmkMultiSelectionInfo.CleanUpFailedResource",
+         "Restart Failed (Clean Up)"},
+
+        {"PcmkMultiSelectionInfo.CleanUpResource",
+         "Reset Fail-Counts (Clean Up)"},
+
+        {"PcmkMultiSelectionInfo.ManageResource",
+         "Manage by CRM"},
+
+        {"PcmkMultiSelectionInfo.UnmanageResource",
+         "Do not manage by CRM"},
+
+        {"PcmkMultiSelectionInfo.MigrateFromResource",
+         "Migrate FROM"},
+
+        {"PcmkMultiSelectionInfo.UnmigrateResource",
+         "Remove Migration Constraints"},
+
+        {"PcmkMultiSelectionInfo.RemoveService",
+         "Remove Selected Services"},
+
+        {"DrbdMultiSelectionInfo.Selection",
+         "<h3>Selection:</h3>"},
+
+        {"DrbdMultiSelectionInfo.ChangeHostColor",
+         "Change Color of Selected Hosts"},
+
+        {"DrbdMultiSelectionInfo.LoadDrbd",
+         "Load DRBD Module on Selected Hosts"},
+
+        {"DrbdMultiSelectionInfo.AdjustAllDrbd",
+         "Load DRBD Config on Selected Hosts (Adjust)"},
+
+        {"DrbdMultiSelectionInfo.UpAll",
+         "Start All DRBDs on Selected Hosts (up)"},
+
+        {"DrbdMultiSelectionInfo.Detach",
+         "Detach Selected BDs"},
+
+        {"DrbdMultiSelectionInfo.Attach",
+         "Attach Selected BDs"},
+
+        {"DrbdMultiSelectionInfo.Connect",
+         "Connect Resources To Peers"},
+
+        {"DrbdMultiSelectionInfo.Disconnect",
+         "Disconnect Resources From Peers"},
+
+        {"DrbdMultiSelectionInfo.SetPrimary",
+         "Promote Selected BDs To Primary"},
+
+        {"DrbdMultiSelectionInfo.SetSecondary",
+         "Demote Selected BDs To Secondary"},
+
+        {"DrbdMultiSelectionInfo.ForcePrimary",
+         "Force Promotion To Primary"},
+
+        {"DrbdMultiSelectionInfo.Invalidate",
+         "Invalidate Selected BDs"},
+
+        {"DrbdMultiSelectionInfo.ResumeSync",
+         "Resume Syncs"},
+
+        {"DrbdMultiSelectionInfo.PauseSync",
+         "Pause Syncs"},
+
+        {"DrbdMultiSelectionInfo.Resize",
+         "Resize selected BDs"},
+
+        {"DrbdMultiSelectionInfo.DiscardData",
+         "Discard Data on selected BDs"},
+
+        {"AllHostsInfo.QuickCluster",
+         "add configured pacemaker cluster"},
+
+        {"HbOrderInfo.NotAvailableForThisVersion",
+          "Not available in this version"},
+
     };
 }

@@ -25,7 +25,7 @@ package lcmc.gui.dialog.vm;
 import lcmc.utilities.Tools;
 import lcmc.gui.resources.VMSVirtualDomainInfo;
 import lcmc.gui.dialog.WizardDialog;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.data.VMSXML;
 
 import javax.swing.JPanel;
@@ -49,16 +49,19 @@ public final class Domain extends VMConfig {
     private static final long serialVersionUID = 1L;
     /** Input pane cache for back button. */
     private JComponent inputPane = null;
-    private GuiComboBox domainNameCB;
+    private Widget domainNameWi;
     /** Configuration options of the new domain. */
-    private static final String[] PARAMS = {VMSXML.VM_PARAM_NAME,
-                                            VMSXML.VM_PARAM_DOMAIN_TYPE,
+    private static final String[] PARAMS = {VMSXML.VM_PARAM_DOMAIN_TYPE,
+                                            VMSXML.VM_PARAM_NAME,
+                                            VMSXML.VM_PARAM_VIRSH_OPTIONS,
                                             VMSXML.VM_PARAM_EMULATOR,
                                             VMSXML.VM_PARAM_VCPU,
                                             VMSXML.VM_PARAM_CURRENTMEMORY,
                                             VMSXML.VM_PARAM_BOOT,
+                                            VMSXML.VM_PARAM_BOOT_2,
                                             VMSXML.VM_PARAM_LOADER,
                                             VMSXML.VM_PARAM_TYPE,
+                                            VMSXML.VM_PARAM_INIT,
                                             VMSXML.VM_PARAM_TYPE_ARCH,
                                             VMSXML.VM_PARAM_TYPE_MACHINE};
     /** Next dialog object. */
@@ -71,10 +74,16 @@ public final class Domain extends VMConfig {
     }
 
     /** Next dialog. */
-    @Override public WizardDialog nextDialog() {
+    @Override
+    public WizardDialog nextDialog() {
         if (nextDialogObject == null) {
-            nextDialogObject =
-                    new InstallationDisk(this, getVMSVirtualDomainInfo());
+            if (getVMSVirtualDomainInfo().needFilesystem()) {
+                nextDialogObject =
+                        new Filesystem(this, getVMSVirtualDomainInfo());
+            } else {
+                nextDialogObject =
+                        new InstallationDisk(this, getVMSVirtualDomainInfo());
+            }
         }
         return nextDialogObject;
     }
@@ -83,7 +92,8 @@ public final class Domain extends VMConfig {
      * Returns the title of the dialog. It is defined as
      * Dialog.vm.Domain.Title in TextResources.
      */
-    @Override protected String getDialogTitle() {
+    @Override
+    protected String getDialogTitle() {
         return Tools.getString("Dialog.vm.Domain.Title");
     }
 
@@ -91,23 +101,26 @@ public final class Domain extends VMConfig {
      * Returns the description of the dialog. It is defined as
      * Dialog.vm.Domain.Description in TextResources.
      */
-    @Override protected String getDescription() {
+    @Override
+    protected String getDescription() {
         return Tools.getString("Dialog.vm.Domain.Description");
     }
 
     /** Inits dialog. */
-    @Override protected void initDialog() {
+    @Override
+    protected void initDialog() {
         super.initDialog();
         enableComponentsLater(new JComponent[]{buttonClass(nextButton())});
     }
 
     /** Inits the dialog. */
-    @Override protected void initDialogAfterVisible() {
+    @Override
+    protected void initDialogAfterVisible() {
         super.initDialogAfterVisible();
         final VMSVirtualDomainInfo vdi = getVMSVirtualDomainInfo();
         final boolean ch = vdi.checkResourceFieldsChanged(null, PARAMS);
         final boolean cor = vdi.checkResourceFieldsCorrect(null, PARAMS);
-        if (cor) {
+        if (cor || nextDialogObject != null) {
             enableComponents();
         } else {
             /* don't enable */
@@ -120,13 +133,14 @@ public final class Domain extends VMConfig {
         });
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
-                domainNameCB.requestFocus();
+                domainNameWi.requestFocus();
             }
         });
     }
 
     /** Returns input pane where user can configure a vm. */
-    @Override protected JComponent getInputPane() {
+    @Override
+    protected JComponent getInputPane() {
         final VMSVirtualDomainInfo vdi = getVMSVirtualDomainInfo();
         vdi.getInfoPanel();
         vdi.waitForInfoPanel();
@@ -146,10 +160,10 @@ public final class Domain extends VMConfig {
                           optionsPanel,
                           PARAMS,
                           buttonClass(nextButton()),
-                          Tools.getDefaultInt("Dialog.vm.Resource.LabelWidth"),
-                          Tools.getDefaultInt("Dialog.vm.Resource.FieldWidth"),
+                          Tools.getDefaultSize("Dialog.vm.Resource.LabelWidth"),
+                          Tools.getDefaultSize("Dialog.vm.Resource.FieldWidth"),
                           null);
-        domainNameCB = vdi.paramComboBoxGet(VMSXML.VM_PARAM_NAME, "wizard");
+        domainNameWi = vdi.getWidget(VMSXML.VM_PARAM_NAME, "wizard");
         panel.add(optionsPanel);
 
         final JScrollPane sp = new JScrollPane(panel);

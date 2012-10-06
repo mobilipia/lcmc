@@ -33,8 +33,6 @@ import lcmc.configs.AppDefaults;
 
 import java.util.Map;
 import java.util.LinkedHashMap;
-import java.util.Set;
-import java.util.HashSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.ArrayList;
@@ -197,16 +195,19 @@ public final class ProgressIndicatorPanel extends JComponent
 
     /** Is called upan a failure. */
     public void failure(final String text) {
+        Tools.appWarning(text);
         if (text == null) {
             return;
         }
         failuresMap.add(text);
         start(text, null);
+        Tools.sleep(1000);
         stop(text);
     }
 
     /** Is called upan a failure and shows it for n seconds. */
     public void failure(final String text, final int n) {
+        Tools.appWarning(text);
         if (text == null || n < 0) {
             return;
         }
@@ -297,7 +298,8 @@ public final class ProgressIndicatorPanel extends JComponent
     }
 
     /** Paints the glass pane with info and progress indicator. */
-    @Override protected void paintComponent(final Graphics g) {
+    @Override
+    protected void paintComponent(final Graphics g) {
         if (started) {
             final int width  = getWidth();
 
@@ -423,7 +425,8 @@ public final class ProgressIndicatorPanel extends JComponent
         }
 
         /** Runs the thread. */
-        @Override public void run() {
+        @Override
+        public void run() {
             long start = System.currentTimeMillis();
             if (rampDelay == 0) {
                 alphaLevel = rampUp ? MAX_ALPHA_LEVEL : 0;
@@ -469,7 +472,7 @@ public final class ProgressIndicatorPanel extends JComponent
                     if (alpha < MAX_ALPHA_LEVEL) {
                         int delay = 1000;
                         if (failuresMap.contains(text)) {
-                            delay = 1000;
+                            delay = 10000;
                         }
                         alpha -=
                             (int) (MAX_ALPHA_LEVEL * (time - start) / delay);
@@ -502,42 +505,50 @@ public final class ProgressIndicatorPanel extends JComponent
     }
 
     /** Mouse clicked. */
-    @Override public void mouseClicked(final MouseEvent e) {
+    @Override
+    public void mouseClicked(final MouseEvent e) {
         /* do nothing */
     }
 
     /** Mouse pressed. */
-    @Override public void mousePressed(final MouseEvent e) {
+    @Override
+    public void mousePressed(final MouseEvent e) {
         /* do nothing */
     }
 
     /** Mouse released. */
-    @Override public void mouseReleased(final MouseEvent e) {
+    @Override
+    public void mouseReleased(final MouseEvent e) {
         /* do nothing */
     }
 
     /** Mouse entered. */
-    @Override public void mouseEntered(final MouseEvent e) {
+    @Override
+    public void mouseEntered(final MouseEvent e) {
         /* do nothing */
     }
 
     /** Mouse exited. */
-    @Override public void mouseExited(final MouseEvent e) {
+    @Override
+    public void mouseExited(final MouseEvent e) {
         /* do nothing */
     }
 
     /** Key pressed. */
-    @Override public void keyPressed(final KeyEvent e) {
+    @Override
+    public void keyPressed(final KeyEvent e) {
         /* do nothing */
     }
 
     /** Key released. */
-    @Override public void keyReleased(final KeyEvent e) {
+    @Override
+    public void keyReleased(final KeyEvent e) {
         /* do nothing */
     }
 
     /** Key typed. */
-    @Override public void keyTyped(final KeyEvent e) {
+    @Override
+    public void keyTyped(final KeyEvent e) {
         /* do nothing */
     }
 }

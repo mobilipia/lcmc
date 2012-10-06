@@ -44,6 +44,7 @@ import java.awt.geom.Point2D;
 
 import java.awt.Color;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
@@ -59,6 +60,12 @@ import java.util.regex.Matcher;
 import java.util.concurrent.CountDownLatch;
 import javax.swing.JComponent;
 import javax.swing.SwingUtilities;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
+import java.util.concurrent.locks.ReadWriteLock;
+import java.util.concurrent.locks.ReentrantReadWriteLock;
+
 
 /**
  * This class holds host data and implementation of host related methods.
@@ -139,6 +146,12 @@ public final class Host {
     /** List of block devices of this host. */
     private Map<String, BlockDevice> blockDevices =
                                       new LinkedHashMap<String, BlockDevice>();
+    /** List of drbd block devices of this host. */
+    private Map<String, BlockDevice> drbdBlockDevices =
+                                      new LinkedHashMap<String, BlockDevice>();
+    /** Options for GUI drop down lists. */
+    private Map<String, List<String>> guiOptions =
+                                          new HashMap<String, List<String>>();
     /** Color of this host in graphs. */
     private Color defaultColor;
     /** Color of this host in graphs. */
@@ -149,6 +162,8 @@ public final class Host {
     private ExecCommandThread drbdStatusThread = null;
     /** Thread where hb status command is running. */
     private ExecCommandThread clStatusThread = null;
+    /** Thread where server status command is running. */
+    private ExecCommandThread serverStatusThread = null;
     /** List of positions of the services.
      *  Question is this: the saved positions can be different on different
      *  hosts, but only one can be used in the hb graph.
@@ -164,6 +179,8 @@ public final class Host {
     private boolean commLayerStopping = false;
     /** Whether the comm layer is starting. */
     private boolean commLayerStarting = false;
+    /** Whether the pcmk is starting. */
+    private boolean pcmkStarting = false;
     /** Is "on" if corosync is in rc. */
     private boolean csIsRc = false;
     /** Is "on" if openais is in rc. */
@@ -193,7 +210,7 @@ public final class Host {
     /** Is "on" if pacemaker has an init script. */
     private boolean pcmkInit = false;
     /** Pacemaker service version. From version 1, use pacamker init script. */
-    private int pcmkServiceVersion = 0;
+    private int pcmkServiceVersion = -1;
     /** Is "on" if drbd module is loaded. */
     private boolean drbdLoaded = false;
     /** Corosync version. */
@@ -236,12 +253,8 @@ public final class Host {
     private String drbdInstallMethod;
     /** Heartbeat lib path. */
     private String hbLibPath = null;
-    /** Xen lib path. */
-    private String xenLibPath = null;
     /** MD5 checksum of VM Info from server. */
     private String vmInfoMD5 = null;
-    /** Previous hw info output. */
-    private String oldHwInfo = null;
     /** Index of this host in its cluster. */
     private int index = 0;
     /** Whether the last connection check was positive. */
@@ -250,13 +263,15 @@ public final class Host {
     private Boolean corosyncHeartbeatRunning = null;
     /** Libvirt version. */
     private String libvirtVersion = null;
-    /** Timestamp, to ensure that older hwinfo is discarded. */
-    private volatile long timestamp = 0;
     /** String that is displayed as a tool tip for disabled menu item. */
     public static final String NOT_CONNECTED_STRING =
                                                    "not connected to the host";
+    /** Block device with number pattern. */
+    public static final Pattern BDP = Pattern.compile("(\\D+)\\d+");
+    /** DRBD bd pattern. */
+    public static final Pattern DRBDP = Pattern.compile(".*\\/drbd\\d+$");
     /** Physical volumes on this host. */
-    private List<String> physicalVolumes = new ArrayList<String>();
+    private List<BlockDevice> physicalVolumes = new ArrayList<BlockDevice>();
     /** Volume group information on this host. */
     private Map<String, Long> volumeGroups = new LinkedHashMap<String, Long>();
     /** Volume group with all lvs in it. */
@@ -264,6 +279,31 @@ public final class Host {
                                             new HashMap<String, Set<String>>();
     /** Whether this cluster should be saved. */
     private boolean savable = true;
+    /** Ping is set every 10s. */
+    private volatile AtomicBoolean ping = new AtomicBoolean(true);
+    /** Global drbd status lock. */
+    private final Lock mDRBDStatusLock = new ReentrantLock();
+    /** Update VMS lock. */
+    private final Lock mUpdateVMSlock = new ReentrantLock();
+    /** Time stamp lock */
+    private final Lock mInfoTimestampLock = new ReentrantLock();
+    /** Time stamp hash. */
+    private final Map<String, Double> infoTimestamp =
+                                                new HashMap<String, Double>();
+    /** Timeout after which the connection is considered to be dead. */
+    private final int PING_TIMEOUT           = 40000;
+    private final int DRBD_EVENTS_TIMEOUT    = 40000;
+    private final int CLUSTER_EVENTS_TIMEOUT = 40000;
+    private final int HW_INFO_TIMEOUT        = 40000;
+
+    /** Choices for gui drop down menus. */
+    public static final String VM_FILESYSTEM_SOURCE_DIR_LXC =
+                                                "vm.filesystem.source.dir.lxc";
+
+    /** Root user name. */
+    public static final String ROOT_USER = "root";
+    /** Default SSH port. */
+    public static final String DEFAULT_SSH_PORT = "22";
     /**
      * Prepares a new <code>Host</code> object. Initializes host browser and
      * host's resources.
@@ -279,8 +319,8 @@ public final class Host {
 
     /** Prepares a new <code>Host</code> object. */
     public Host(final String ip) {
-        this();
-        this.ip = ip;
+    this();
+    this.ip = ip;
     }
 
     /** Returns borwser object for this host. */
@@ -877,9 +917,14 @@ public final class Host {
         return "/usr/lib/heartbeat";
     }
 
+    /** Returns lxc lib path. */
+    public String getLxcLibPath() {
+        return getDistString("libvirt.lxc.libpath");
+    }
+
     /** Returns xen lib path. */
     public String getXenLibPath() {
-        return xenLibPath;
+        return getDistString("libvirt.xen.libpath");
     }
 
     /** Gets distribution, e.g., debian. */
@@ -902,6 +947,7 @@ public final class Host {
         if (ssh.isConnected()) {
             ssh.forceDisconnect();
         }
+        setVMInfoMD5(null);
     }
 
     /**
@@ -927,6 +973,18 @@ public final class Host {
     }
 
     /**
+     *  Gets list of strings that are specific to the distribution
+     *  distribution.
+     */
+    public List<String> getDistStrings(final String commandString) {
+        return Tools.getDistStrings(commandString,
+                                    dist,
+                                    distVersionString,
+                                    arch);
+    }
+
+
+    /**
      * Converts command string to real command for a distribution, specifying
      * what-with-what hash.
      */
@@ -938,7 +996,8 @@ public final class Host {
                     distVersionString,
                     arch,
                     new ConvertCmdCallback() {
-                        @Override public String convert(String command) {
+                        @Override
+                        public String convert(String command) {
                             for (final String tag : replaceHash.keySet()) {
                                 if (tag != null && command.indexOf(tag) > -1) {
                                     final String s = replaceHash.get(tag);
@@ -1078,34 +1137,6 @@ public final class Host {
                                commandTimeout);
     }
 
-    /** Executes connection status command. */
-    public void execConnectionStatusCommand(final ExecCallback execCallback) {
-        if (connectionStatusThread == null) {
-            connectionStatusThread = ssh.execCommand(
-                                Tools.getDistCommand(
-                                                "Host.getConnectionStatus",
-                                                dist,
-                                                distVersionString,
-                                                arch,
-                                                null, /* ConvertCmdCallback */
-                                                false), /* in bash */
-                                    execCallback,
-                                    null,
-                                    false,
-                                    false,
-                                    10000);
-            try {
-                connectionStatusThread.join(0);
-            } catch (java.lang.InterruptedException e) {
-                Thread.currentThread().interrupt();
-            }
-            connectionStatusThread = null;
-        } else {
-            Tools.appWarning(getName()
-                             + ": trying to start started connection status");
-        }
-    }
-
     /**
      * Executes get status command which runs in the background and updates the
      * block device object. The command is 'drbdsetup /dev/drbdX events'
@@ -1126,10 +1157,20 @@ public final class Host {
                                     outputCallback,
                                     false,
                                     false,
-                                    0);
+                                    DRBD_EVENTS_TIMEOUT);
         } else {
             Tools.appWarning("trying to start started drbd status");
         }
+    }
+
+    /** Stops server (hw) status background process. */
+    public void stopServerStatus() {
+        if (serverStatusThread == null) {
+            Tools.appWarning("trying to stop stopped server status");
+            return;
+        }
+        serverStatusThread.cancel();
+        serverStatusThread = null;
     }
 
     /** Stops drbd status background process. */
@@ -1171,7 +1212,7 @@ public final class Host {
                                 outputCallback,
                                 false,
                                 false,
-                                0);
+                                CLUSTER_EVENTS_TIMEOUT);
         } else {
             Tools.appWarning("trying to start started hb status");
         }
@@ -1297,7 +1338,7 @@ public final class Host {
             if (i < usernames.length) {
                 s.append(usernames[i]);
             } else {
-                s.append("root");
+                s.append(ROOT_USER);
             }
             s.append(' ');
             s.append(ips[i]);
@@ -1319,7 +1360,8 @@ public final class Host {
     }
 
     /** Returns the host name. */
-    @Override public String toString() {
+    @Override
+    public String toString() {
         return getName();
     }
 
@@ -1361,7 +1403,7 @@ public final class Host {
     }
 
     /** Sets name of the host as it will be identified. */
-    void setName(final String name) {
+    public void setName(final String name) {
         this.name = name;
     }
 
@@ -1434,7 +1476,8 @@ public final class Host {
             enableOnConnectList.add(c);
         }
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 c.setEnabled(isConnected());
             }
         });
@@ -1448,7 +1491,8 @@ public final class Host {
     public void setConnected() {
         final boolean con = isConnected();
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 for (final JComponent c : enableOnConnectList) {
                     c.setEnabled(con);
                 }
@@ -1489,7 +1533,8 @@ public final class Host {
 
             connect(sshGui,
                     new ConnectionCallback() {
-                        @Override public void done(final int flag) {
+                        @Override
+                        public void done(final int flag) {
                             setConnected();
                             getSSH().execCommandAndWait(":", /* activate sudo */
                                     false,
@@ -1505,8 +1550,8 @@ public final class Host {
                             }
                         }
 
-                        @Override public void doneError(
-                                                    final String errorText) {
+                        @Override
+                        public void doneError(final String errorText) {
                             setLoadingError();
                             setConnected();
                             if (progressIndicator) {
@@ -1532,22 +1577,23 @@ public final class Host {
     void getAllInfo() {
         final Thread t = execCommand("GetHostAllInfo",
                          new ExecCallback() {
-                             @Override public void done(final String ans) {
+                             @Override
+                             public void done(final String ans) {
                                  parseHostInfo(ans);
                                  setLoadingDone();
                              }
 
-                             @Override public void doneError(
-                                                         final String ans,
-                                                         final int exitCode) {
+                             @Override
+                             public void doneError(final String ans,
+                                                   final int exitCode) {
                                  setLoadingError();
                              }
                          },
                          null, /* ConvertCmdCallback */
                          false,
-                         SSH.DEFAULT_COMMAND_TIMEOUT);
+                         HW_INFO_TIMEOUT);
         try {
-            t.join(0);
+            t.join();
         } catch (java.lang.InterruptedException e) {
             Thread.currentThread().interrupt();
         }
@@ -1556,95 +1602,262 @@ public final class Host {
     /** Gets and stores hardware info about the host. */
     public void getHWInfo(final CategoryInfo[] infosToUpdate,
                           final ResourceGraph[] graphs) {
-        final long thisTS = ++timestamp;
         final Thread t = execCommand("GetHostHWInfo",
                          new ExecCallback() {
-                             @Override public void done(final String ans) {
-                                 if (thisTS != timestamp) {
-                                     return;
+                             @Override
+                             public void done(final String ans) {
+                                 parseHostInfo(ans);
+                                 for (final CategoryInfo ci
+                                                     : infosToUpdate) {
+                                     ci.updateTable(CategoryInfo.MAIN_TABLE);
                                  }
-                                 if (!ans.equals(oldHwInfo)) {
-                                    parseHostInfo(ans);
-                                    oldHwInfo = ans;
-                                    for (final CategoryInfo ci
-                                                        : infosToUpdate) {
-                                        ci.updateTable(CategoryInfo.MAIN_TABLE);
-                                    }
-                                    for (final ResourceGraph g : graphs) {
-                                        if (g != null) {
-                                            g.repaint();
-                                        }
-                                    }
+                                 for (final ResourceGraph g : graphs) {
+                                     if (g != null) {
+                                         g.repaint();
+                                     }
                                  }
                                  setLoadingDone();
                              }
 
-                             @Override public void doneError(
-                                                          final String ans,
-                                                          final int exitCode) {
-                                 if (thisTS != timestamp) {
-                                     return;
-                                 }
+                             @Override
+                             public void doneError(final String ans,
+                                                   final int exitCode) {
                                  setLoadingError();
+                                 getSSH().forceReconnect();
                              }
                          },
                          null, /* ConvertCmdCallback */
                          false,
-                         SSH.DEFAULT_COMMAND_TIMEOUT);
+                         HW_INFO_TIMEOUT);
         try {
-            t.join(0);
+            t.join();
         } catch (java.lang.InterruptedException e) {
             Thread.currentThread().interrupt();
         }
     }
 
-    /** Gets and stores hardware info about the host. Return true if something
-     * has changed. */
-    public void getHWInfoLazy(final CategoryInfo[] infosToUpdate,
-                              final ResourceGraph[] graphs) {
-        final long thisTS = timestamp;
-        final Thread t = execCommand("GetHostHWInfoLazy",
+    public String getOutput(final String type, final StringBuffer buffer) {
+        final String infoStart = "--" + type + "-info-start--";
+        final String infoEnd = "--" + type + "-info-end--";
+        final int infoStartLength = infoStart.length();
+        final int infoEndLength = infoEnd.length();
+        final int s = buffer.indexOf(infoStart);
+        final int s2 = buffer.indexOf("\r\n", s);
+        final int e = buffer.indexOf(infoEnd, s);
+        String out = null;
+        if (s > -1 && s < s2 && s2 <= e) {
+            Double timestamp = null;
+            final String ts = buffer.substring(s + infoStartLength, s2);
+            try {
+                timestamp = Double.parseDouble(ts);
+            }  catch (final NumberFormatException nfe) {
+                Tools.debug(this, "could not parse: " + ts + " " + nfe);
+            }
+            mInfoTimestampLock.lock();
+            if (!infoTimestamp.containsKey(type)
+                || (timestamp != null && timestamp >= infoTimestamp.get(type))) {
+                infoTimestamp.put(type, timestamp);
+                mInfoTimestampLock.unlock();
+                out = buffer.substring(s2 + 2, e);
+            } else {
+                mInfoTimestampLock.unlock();
+            }
+            buffer.delete(0, e + infoEndLength + 2);
+        }
+        return out;
+    }
+
+    public void startPing() {
+        final Thread t = ssh.execCommand(
+                                Tools.getDistCommand(
+                                                "PingCommand",
+                                                dist,
+                                                distVersionString,
+                                                arch,
+                                                null, /* ConvertCmdCallback */
+                                                true), /* in bash */
                          new ExecCallback() {
-                             @Override public void done(final String ans) {
-                                 if (thisTS != timestamp) {
-                                     return;
-                                 }
-                                 if (!ans.equals(oldHwInfo)) {
-                                    parseHostInfo(ans);
-                                    oldHwInfo = ans;
-                                    for (final CategoryInfo ci
-                                                        : infosToUpdate) {
-                                        ci.updateTable(CategoryInfo.MAIN_TABLE);
-                                    }
-                                    for (final ResourceGraph g : graphs) {
-                                        if (g != null) {
-                                            g.repaint();
-                                        }
-                                    }
-                                 }
-                                 setLoadingDone();
+                             @Override
+                             public void done(final String ans) {
                              }
 
-                             @Override public void doneError(
-                                                        final String ans,
-                                                        final int exitCode) {
-                                 if (thisTS != timestamp) {
-                                     return;
-                                 }
-                                 setLoadingError();
+                             @Override
+                             public void doneError(final String ans,
+                                                   final int exitCode) {
                              }
                          },
-                         null, /* ConvertCmdCallback */
+                         new NewOutputCallback() {
+                             @Override
+                             public void output(final String output) {
+                                 ping.set(true);
+                             }
+                         },
                          false,
-                         SSH.DEFAULT_COMMAND_TIMEOUT);
+                         false,
+                         PING_TIMEOUT);
         try {
-            t.join(0);
+            t.join();
         } catch (java.lang.InterruptedException e) {
             Thread.currentThread().interrupt();
         }
     }
 
+    /** Gets and stores hardware info about the host. */
+    public void startHWInfoDaemon(final CategoryInfo[] infosToUpdate,
+                                  final ResourceGraph[] graphs) {
+        final Host host = this;
+        serverStatusThread = ssh.execCommand(
+                                Tools.getDistCommand(
+                                                "HostHWInfoDaemon",
+                                                dist,
+                                                distVersionString,
+                                                arch,
+                                                null, /* ConvertCmdCallback */
+                                                false), /* in bash */
+                         new ExecCallback() {
+                             @Override
+                             public void done(final String ans) {
+                                 parseHostInfo(ans);
+                                 for (final CategoryInfo ci
+                                                     : infosToUpdate) {
+                                     ci.updateTable(CategoryInfo.MAIN_TABLE);
+                                 }
+                                 for (final ResourceGraph g : graphs) {
+                                     if (g != null) {
+                                         g.repaint();
+                                     }
+                                 }
+                                 if (host.isServerStatusLatch()) {
+                                     final ClusterBrowser cb =
+                                              getBrowser().getClusterBrowser();
+                                     cb.updateServerStatus(host);
+                                 }
+                                 setLoadingDone();
+                             }
 
+                             @Override
+                             public void doneError(final String ans,
+                                                   final int exitCode) {
+                                 if (host.isServerStatusLatch()) {
+                                     final ClusterBrowser cb =
+                                              getBrowser().getClusterBrowser();
+                                     cb.updateServerStatus(host);
+                                 }
+                                 setLoadingError();
+                             }
+                         },
+                         new NewOutputCallback() {
+                             private StringBuffer outputBuffer =
+                                                        new StringBuffer(300);
+                             @Override
+                             public void output(final String output) {
+                                 outputBuffer.append(output);
+                                 final ClusterBrowser cb =
+                                              getBrowser().getClusterBrowser();
+                                 int i = 0;
+                                 String hw, vm, drbdConfig;
+                                 String hwUpdate = null;
+                                 String vmUpdate = null;
+                                 String drbdUpdate = null;
+                                 do {
+                                     i++;
+                                     hw = getOutput("hw", outputBuffer); 
+                                     if (hw != null) {
+                                         hwUpdate = hw;
+                                     }
+                                     vmStatusLock();
+                                     vm = getOutput("vm", outputBuffer); 
+                                     if (vm != null) {
+                                         vmUpdate = vm;
+                                     }
+                                     vmStatusUnlock();
+                                     drbdStatusLock();
+                                     drbdConfig = getOutput("drbd",
+                                                            outputBuffer); 
+                                     if (drbdConfig != null) {
+                                         drbdUpdate = drbdConfig;
+                                     }
+                                     drbdStatusUnlock();
+                                 } while (hw != null
+                                          || vm != null
+                                          || drbdConfig != null);
+
+                                 Tools.chomp(outputBuffer);
+                                 if (hwUpdate != null) {
+                                     parseHostInfo(hwUpdate);
+                                     for (final ResourceGraph g : graphs) {
+                                         if (g != null) {
+                                             g.repaint();
+                                         }
+                                     }
+                                 }
+                                 if (vmUpdate != null) {
+                                     final VMSXML newVMSXML =
+                                                        new VMSXML(host);
+                                     if (newVMSXML.update(vmUpdate)) {
+                                         cb.vmsXMLPut(host, newVMSXML);
+                                         cb.updateVMS();
+                                     }
+                                 }
+                                 if (drbdUpdate != null) {
+                                     final DrbdXML dxml =
+                                           new DrbdXML(cluster.getHostsArray(),
+                                                       cb.getDrbdParameters());
+                                     dxml.update(drbdUpdate);
+                                     cb.setDrbdXML(dxml);
+                                     cb.getDrbdGraph().getDrbdInfo().setParameters();
+                                     cb.updateDrbdResources();
+                                 }
+                                 if (drbdUpdate != null
+                                     || vmUpdate != null) {
+                                     cb.updateHWInfo(host);
+                                 }
+                                 if (drbdUpdate != null) {
+                                     cb.updateServerStatus(host);
+                                 }
+                                 if (isServerStatusLatch()) {
+                                     cb.updateServerStatus(host);
+                                 }
+                                 setLoadingDone();
+                             }
+                         },
+                         false,
+                         false,
+                         HW_INFO_TIMEOUT);
+        try {
+            serverStatusThread.join();
+        } catch (java.lang.InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
+
+    /** Starts connection status. */
+    public void startConnectionStatus() {
+        final Thread thread = new Thread(new Runnable() {
+            @Override
+            public void run() {
+                while (true) {
+                    if (ping.get()) {
+                       Tools.debug(this, "connection ok on " + getName(),
+                                   2);
+                       setConnected();
+                       ping.set(false);
+                    } else {
+                       Tools.debug(this, "connection lost on "
+                                         + getName(),
+                                   2);
+                       getSSH().forceReconnect();
+                       setConnected();
+                    }
+                    Tools.sleep(PING_TIMEOUT);
+                    if (getBrowser().getClusterBrowser().isCancelServerStatus()) {
+                        break;
+                    }
+                }
+            }
+        });
+        thread.start();
+    }
 
     /** Returns whether host ssh connection was established. */
     public boolean isConnected() {
@@ -1730,15 +1943,8 @@ public final class Host {
             command = command.replaceAll("@DRBDDIR@", drbdDir);
         }
         if (command.indexOf("@GUI-HELPER@") > -1) {
-            String dir = "/usr/local/bin";
-            if (username != null && !"root".equals(username)) {
-                final String home = System.getProperty("user.home");
-                if (home != null) {
-                    dir = System.getProperty("user.home");
-                }
-            }
             command = command.replaceAll("@GUI-HELPER@",
-                                         dir + "/lcmc-gui-helper-"
+                                         "/usr/local/bin/lcmc-gui-helper-"
                                          + Tools.getRelease());
         }
         return command;
@@ -1772,19 +1978,25 @@ public final class Host {
         final List<String> versionLines = new ArrayList<String>();
         final Map<String, BlockDevice> newBlockDevices =
                                      new LinkedHashMap<String, BlockDevice>();
+        final Map<String, BlockDevice> newDrbdBlockDevices =
+                                     new LinkedHashMap<String, BlockDevice>();
         final Map<String, NetInterface> newNetInterfaces =
                                      new LinkedHashMap<String, NetInterface>();
         final Map<String, Long> newVolumeGroups =
                                      new LinkedHashMap<String, Long>();
         final Map<String, Set<String>> newVolumeGroupsLVS =
                                      new HashMap<String, Set<String>>();
-        final List<String> newPhysicalVolumes = new ArrayList<String>();
+        final List<BlockDevice> newPhysicalVolumes =
+                                                 new ArrayList<BlockDevice>();
         final Set<String> newFileSystems = new TreeSet<String>();
         final Set<String> newCryptoModules = new TreeSet<String>();
         final Set<String> newQemuKeymaps = new TreeSet<String>();
         final Set<String> newCpuMapModels = new TreeSet<String>();
         final Set<String> newCpuMapVendors = new TreeSet<String>();
         final Set<String> newMountPoints = new TreeSet<String>();
+
+        final Map<String, List<String>> newGuiOptions =
+                                          new HashMap<String, List<String>>();
 
         boolean netInfo = false;
         boolean diskInfo = false;
@@ -1797,11 +2009,12 @@ public final class Host {
         boolean mountPointsInfo = false;
         boolean guiInfo = false;
         boolean installationInfo = false;
+        boolean guiOptionsInfo = false;
         boolean versionInfo = false;
 
         newMountPoints.add("/mnt/");
+        String guiOptionName = null;
 
-        final Pattern bdP = Pattern.compile("(\\D+)\\d+");
         for (String line : lines) {
             if (line.indexOf("ERROR:") == 0) {
                 break;
@@ -1819,6 +2032,7 @@ public final class Host {
                 || "mount-points-info".equals(line)
                 || "gui-info".equals(line)
                 || "installation-info".equals(line)
+                || "gui-options-info".equals(line)
                 || "version-info".equals(line)) {
                 type = line;
                 continue;
@@ -1834,18 +2048,29 @@ public final class Host {
                 BlockDevice blockDevice = new BlockDevice(line);
                 final String name = blockDevice.getName();
                 if (name != null) {
-                    if (blockDevices.containsKey(name)) {
-                        /* get the existing block device object,
-                           forget the new one. */
-                        blockDevice = blockDevices.get(name);
-                        blockDevice.update(line);
-                    }
-                    newBlockDevices.put(name, blockDevice);
-                    if (blockDevice.getVolumeGroup() == null
-                        && name.length() > 5 && name.indexOf('/', 5) < 0) {
-                        final Matcher m = bdP.matcher(name);
-                        if (m.matches()) {
-                            newBlockDevices.remove(m.group(1));
+                    final Matcher drbdM = DRBDP.matcher(name);
+                    if (drbdM.matches()) {
+                        if (drbdBlockDevices.containsKey(name)) {
+                            /* get the existing block device object,
+                               forget the new one. */
+                            blockDevice = drbdBlockDevices.get(name);
+                            blockDevice.update(line);
+                        }
+                        newDrbdBlockDevices.put(name, blockDevice);
+                    } else {
+                        if (blockDevices.containsKey(name)) {
+                            /* get the existing block device object,
+                               forget the new one. */
+                            blockDevice = blockDevices.get(name);
+                            blockDevice.update(line);
+                        }
+                        newBlockDevices.put(name, blockDevice);
+                        if (blockDevice.getVolumeGroup() == null
+                            && name.length() > 5 && name.indexOf('/', 5) < 0) {
+                            final Matcher m = BDP.matcher(name);
+                            if (m.matches()) {
+                                newBlockDevices.remove(m.group(1));
+                            }
                         }
                     }
                 }
@@ -1862,7 +2087,7 @@ public final class Host {
                     }
                 }
                 if (blockDevice.isPhysicalVolume()) {
-                    newPhysicalVolumes.add(name);
+                    newPhysicalVolumes.add(blockDevice);
                 }
                 diskInfo = true;
             } else if ("vg-info".equals(type)) {
@@ -1897,6 +2122,11 @@ public final class Host {
             } else if ("installation-info".equals(type)) {
                 parseInstallationInfo(line);
                 installationInfo = true;
+            } else if ("gui-options-info".equals(type)) {
+                guiOptionName = parseGuiOptionsInfo(line,
+                                                    guiOptionName,
+                                                    newGuiOptions);
+                guiOptionsInfo = true;
             } else if ("version-info".equals(type)) {
                 versionLines.add(line);
                 versionInfo = true;
@@ -1909,6 +2139,7 @@ public final class Host {
 
         if (diskInfo) {
             blockDevices = newBlockDevices;
+            drbdBlockDevices = newDrbdBlockDevices;
             physicalVolumes = newPhysicalVolumes;
             volumeGroupsLVS = newVolumeGroupsLVS;
         }
@@ -1945,6 +2176,9 @@ public final class Host {
             setDistInfo(versionLines.toArray(new String[versionLines.size()]));
         }
 
+        if (guiOptionsInfo) {
+            guiOptions = newGuiOptions;
+        }
 
         getBrowser().updateHWResources(getNetInterfaces(),
                                        getBlockDevices(),
@@ -1974,6 +2208,24 @@ public final class Host {
                                                   new Double(x).doubleValue(),
                                                   new Double(y).doubleValue()));
         }
+    }
+    /** Parses the gui options info. */
+    public String parseGuiOptionsInfo(
+                                    final String line,
+                                    final String guiOptionName,
+                                    final Map<String, List<String>> goptions) {
+        if (line.length() > 2 && line.substring(0, 2).equals("o:")) {
+            final String name = line.substring(2);
+            goptions.put(name, new ArrayList<String>());
+            return name;
+        }
+        if (guiOptionName != null) {
+            final List<String> options = goptions.get(guiOptionName);
+            if (options != null) {
+                options.add(line);
+            }
+        }
+        return guiOptionName;
     }
 
     /** Parses the installation info. */
@@ -2028,6 +2280,7 @@ public final class Host {
             if (tokens.length == 2) {
                 aisRunning = "on".equals(tokens[1].trim());
                 commLayerStarting = false;
+                pcmkStarting = false;
             } else {
                 aisRunning = false;
             }
@@ -2096,7 +2349,7 @@ public final class Host {
                 try {
                     pcmkServiceVersion = Integer.parseInt(tokens[1].trim());
                 } catch (java.lang.NumberFormatException e) {
-                    pcmkServiceVersion = 0;
+                    pcmkServiceVersion = -1;
                 }
             }
         } else if ("drbd-loaded".equals(tokens[0])) {
@@ -2110,12 +2363,6 @@ public final class Host {
                 hbLibPath = tokens[1].trim();
             } else {
                 hbLibPath = null;
-            }
-        } else if ("xen-lib-path".equals(tokens[0])) {
-            if (tokens.length == 2) {
-                xenLibPath = tokens[1].trim();
-            } else {
-                xenLibPath = null;
             }
         } else if ("hn".equals(tokens[0])) {
             if (tokens.length == 2) {
@@ -2141,6 +2388,9 @@ public final class Host {
         if (commLayerStarting
             && (csRunning || aisRunning || heartbeatRunning)) {
             commLayerStarting = false;
+        }
+        if (pcmkStarting && pcmkRunning) {
+            pcmkStarting = false;
         }
         if (commLayerStopping
             && !csRunning
@@ -2263,6 +2513,9 @@ public final class Host {
 
     /** Waits on the 'is loading' latch. */
     public void waitOnLoading() {
+        if (isLoadingGate == null) {
+            return;
+        }
         try {
             isLoadingGate.await();
         } catch (InterruptedException ignored) {
@@ -2616,9 +2869,22 @@ public final class Host {
         this.commLayerStarting = commLayerStarting;
     }
 
-    /** Returns pcmkServiceVersion. */
-    public int getPcmkServiceVersion() {
-        return pcmkServiceVersion;
+    /** Returns true if pcmk is starting. */
+    public boolean isPcmkStarting() {
+        return pcmkStarting;
+    }
+
+    /** Sets whether the pcmk is starting. */
+    public void setPcmkStarting(final boolean pcmkStarting) {
+        this.pcmkStarting = pcmkStarting;
+    }
+
+    /** Returns whether pacemaker is started by corosync. */
+    public boolean isPcmkStartedByCorosync() {
+        if (pcmkServiceVersion == 0) {
+            return true;
+        }
+        return false;
     }
 
     /** Sets libvirt version. */
@@ -2659,7 +2925,7 @@ public final class Host {
     }
 
     /** Returns physical volumes. */
-    public List<String> getPhysicalVolumes() {
+    public List<BlockDevice> getPhysicalVolumes() {
         return physicalVolumes;
     }
 
@@ -2673,4 +2939,72 @@ public final class Host {
         return savable;
     }
 
+    /** Return block device object of the drbd device. */
+    public BlockDevice getDrbdBlockDevice(final String device) {
+        return drbdBlockDevices.get(device);
+    }
+
+    /** Return DRBD block device objects. */
+    public Collection<BlockDevice> getDrbdBlockDevices() {
+        return drbdBlockDevices.values();
+    }
+
+    /** Return list of block devices that have the specified VG. */
+    public List<BlockDevice> getPhysicalVolumes(final String vg) {
+        final List<BlockDevice> bds = new ArrayList<BlockDevice>();
+        if (vg == null) {
+            return bds;
+        }
+        for (final BlockDevice b : physicalVolumes) {
+            if (vg.equals(b.getVolumeGroupOnPhysicalVolume())) {
+                bds.add(b);
+            }
+        }
+        return bds;
+    }
+
+    /** drbdStatusTryLock global lock. */
+    public boolean drbdStatusTryLock() {
+        return mDRBDStatusLock.tryLock();
+    }
+
+    /** drbdStatusLock global lock. */
+    public void drbdStatusLock() {
+        mDRBDStatusLock.lock();
+    }
+
+    /** drbdStatusLock global unlock. */
+    public void drbdStatusUnlock() {
+        mDRBDStatusLock.unlock();
+    }
+
+    /** vmStatusLock global lock. */
+    public void vmStatusLock() {
+        mUpdateVMSlock.lock();
+    }
+
+    /** vmStatusLock try global lock. */
+    public boolean vmStatusTryLock() {
+        return mUpdateVMSlock.tryLock();
+    }
+
+    /** vmStatusLock global unlock. */
+    public void vmStatusUnlock() {
+        mUpdateVMSlock.unlock();
+    }
+
+    /** Return whether the user is root */
+    public boolean isRoot() {
+        return ROOT_USER.equals(username);
+    }
+
+    /** Return options for GUI elements. */
+    public List<String> getGuiOptions(final String name) {
+        final List<String> opts = guiOptions.get(name);
+        if (opts == null) {
+            return new ArrayList<String>();
+        }
+        return new ArrayList<String>(guiOptions.get(name));
+    }
 }
+

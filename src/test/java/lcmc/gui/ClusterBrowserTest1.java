@@ -8,21 +8,14 @@ import java.io.File;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
-import java.util.Arrays;
-import java.util.HashSet;
-import java.util.Map;
-import java.awt.Color;
+import java.util.TreeSet;
+import java.util.Collections;
 import java.util.concurrent.CountDownLatch;
 
 import lcmc.utilities.TestSuite1;
 import lcmc.utilities.Tools;
-import lcmc.utilities.SSH;
-import lcmc.utilities.ExecCallback;
-import lcmc.utilities.SSH.ExecCommandThread;
-import lcmc.gui.ClusterBrowser;
+import lcmc.utilities.CRM;
 import lcmc.data.Host;
-import lcmc.gui.resources.ServiceInfo;
-import lcmc.data.ResourceAgent;
 
 public final class ClusterBrowserTest1 extends TestCase {
     @Before
@@ -39,26 +32,69 @@ public final class ClusterBrowserTest1 extends TestCase {
 
     @Test
     public void testProcessClusterOutput() {
+        final CountDownLatch nolatch = new CountDownLatch(0);
+        for (final Host host : TestSuite1.getHosts()) {
+            final ClusterBrowser cb = host.getBrowser().getClusterBrowser();
+
+            StringBuffer buffer = new StringBuffer("cd");
+            cb.processClusterOutput("a---reset---\r\nb",
+                                    buffer,
+                                    host,
+                                    nolatch,
+                                    CRM.LIVE);
+            assertEquals("cdab", buffer.toString());
+
+            buffer = new StringBuffer("");
+            cb.processClusterOutput("a---reset---\r\nb",
+                                    buffer,
+                                    host,
+                                    nolatch,
+                                    CRM.LIVE);
+            assertEquals("ab", buffer.toString());
+
+            buffer = new StringBuffer("cd");
+            cb.processClusterOutput("a---reset---\r\nb",
+                                    buffer,
+                                    host,
+                                    nolatch,
+                                    CRM.LIVE);
+            assertEquals("cdab", buffer.toString());
+
+            buffer = new StringBuffer("cd");
+            cb.processClusterOutput("a---reset---\r\nb---reset---\r\nc",
+                                    buffer,
+                                    host,
+                                    nolatch,
+                                    CRM.LIVE);
+            assertEquals("cdabc", buffer.toString());
+        }
+                    
+        
         if (TestSuite1.QUICK) {
             return;
         }
         final List<String> files = new ArrayList<String>();
         final String userHome = System.getProperty("user.home");
         files.add(userHome + "/testdir/empty.xml");
+        final int repeat = TestSuite1.getFactor();
         for (final String dirName : new String[]{
-                    userHome + "/testdir/pacemaker/shell/regression",
+                    /* userHome + "/testdir/pacemaker/shell/regression", */
                     userHome + "/testdir/pacemaker/pengine/test10"}) {
             final File dir = new File(dirName);
             assertFalse(dir == null);
+            if (dir.listFiles() == null) {
+                continue;
+            }
             for (final File f : dir.listFiles()) {
                 final String file = f.getAbsolutePath();
                 if (file.length() > 3
                     && file.substring(file.length() - 4).equals(".xml")) {
-                    files.add(file);
+                    for (int i = 0; i < repeat; i++) {
+                        files.add(file);
+                    }
                 }
             }
         }
-        int i = 0; 
         String emptyCib = null;
         final StringBuilder nodes = new StringBuilder("<nodes>\n");
         for (final Host host : TestSuite1.getHosts()) {
@@ -83,12 +119,12 @@ public final class ClusterBrowserTest1 extends TestCase {
             status.append("</node_state>\n");
         }
         status.append("</status>\n");
+        int i = 0;
 
-        for (final String file : files) {
+        Collections.sort(files);
+        for (String file : files) {
+            System.out.println(i + " file: " + file);
             i++;
-            if (i > 100) {
-                break;
-            }
             Tools.startProgressIndicator(i + ": " + file);
             String xml = Tools.loadFile(file, true);
             xml = xml.replaceAll("<nodes/>", nodes.toString())
@@ -117,30 +153,30 @@ public final class ClusterBrowserTest1 extends TestCase {
             final boolean testOnly = false;
             for (final Host host : TestSuite1.getHosts()) {
                 final ClusterBrowser cb = host.getBrowser().getClusterBrowser();
+                cb.getClusterViewPanel().setDisabledDuringLoad(true);
                 cb.processClusterOutput(cib,
-                                        new StringBuilder(""),
+                                        new StringBuffer(""),
                                         host,
                                         firstTime,
                                         testOnly);
                 Tools.waitForSwing();
+                cb.getClusterViewPanel().setDisabledDuringLoad(false);
                 cb.getHeartbeatGraph().repaint();
             }
-            Tools.sleep(1000);
+            Tools.sleep(100);
             Tools.stopProgressIndicator(i + ": " + file);
             for (final Host host : TestSuite1.getHosts()) {
                 final ClusterBrowser cb = host.getBrowser().getClusterBrowser();
                 Tools.waitForSwing();
                 cb.processClusterOutput(emptyCib,
-                                        new StringBuilder(""),
+                                        new StringBuffer(""),
                                         host,
                                         firstTime,
                                         testOnly);
                 Tools.waitForSwing();
             }
-            if (i % 10 == 0) {
-                Tools.sleep(5000);
-            }
             Tools.sleep(250);
         }
+        TestSuite1.clearStdout();
     }
 }

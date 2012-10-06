@@ -23,10 +23,14 @@
 package lcmc.gui;
 
 import lcmc.gui.resources.BlockDevInfo;
+import lcmc.gui.resources.Info;
+import lcmc.gui.resources.ServiceInfo;
+import lcmc.gui.resources.ServicesInfo;
 import lcmc.data.Cluster;
 import lcmc.data.ConfigData;
 import lcmc.data.AccessMode;
 import lcmc.utilities.Tools;
+import lcmc.utilities.CRM;
 import lcmc.utilities.AllHostsUpdatable;
 
 import javax.swing.JFrame;
@@ -111,6 +115,8 @@ public final class GUIData  {
      */
     private final List<AllHostsUpdatable> allHostsUpdateList =
                                             new ArrayList<AllHostsUpdatable>();
+    /** Selected components for copy/paste. */
+    private List<Info> selectedComponents = null;
 
     /** Sets main frame of this application. */
     public void setMainFrame(final Container mainFrame) {
@@ -190,12 +196,14 @@ public final class GUIData  {
                                 terminalSplitPane.getBottomComponent();
         if (!terminalPanel.equals(oldTerminalPanel)) {
             Tools.invokeAndWait(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     final int loc = terminalSplitPane.getDividerLocation();
                     terminalSplitPane.setBottomComponent(terminalPanel);
                     if (loc > Tools.getDefaultInt("DrbdMC.height") - 100) {
                         SwingUtilities.invokeLater(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 expandTerminalSplitPane(1);
                             }
                         });
@@ -215,13 +223,19 @@ public final class GUIData  {
         }
     }
 
+    /** Returns whether the terminal panel is expanded. */
+    public boolean isTerminalPanelExpanded() {
+        return terminalSplitPane.getBottomComponent().getSize().getHeight() != 0;
+    }
+
     /** Expands the terminal split pane. */
     public void expandTerminalSplitPane(final int buttonNo) {
         if (terminalSplitPane == null) {
             return;
         }
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 final int height = (int)
                     terminalSplitPane.getBottomComponent().getSize()
                                                           .getHeight();
@@ -252,7 +266,8 @@ public final class GUIData  {
     /** Repaints hosts and clusters panels. */
     void repaintWithNewData() {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 clustersPanel.repaintTabs();
             }
         });
@@ -261,7 +276,8 @@ public final class GUIData  {
     /** Adds tab with new cluster to the clusters panel. */
     public void addClusterTab(final Cluster cluster) {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 clustersPanel.addTab(cluster);
             }
         });
@@ -270,7 +286,8 @@ public final class GUIData  {
     /** changes name of the selected cluster tab. */
     public void renameSelectedClusterTab(final String newName) {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 clustersPanel.renameSelectedTab(newName);
             }
         });
@@ -282,7 +299,8 @@ public final class GUIData  {
      */
     public void removeSelectedClusterTab() {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 clustersPanel.removeTab();
             }
         });
@@ -291,7 +309,8 @@ public final class GUIData  {
     /** Revalidates and repaints clusters panel. */
     public void refreshClustersPanel() {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 clustersPanel.refresh();
             }
         });
@@ -347,7 +366,8 @@ public final class GUIData  {
         final boolean enabled =
                             Tools.getConfigData().danglingHostsCount() >= 1;
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 mAddClusterButtonListReadLock.lock();
                 try {
                     for (final JComponent addClusterButton
@@ -364,7 +384,8 @@ public final class GUIData  {
     /** Enable/Disable all 'Add Cluster' buttons. */
     public void enableAddClusterButtons(final boolean enable) {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 mAddClusterButtonListReadLock.lock();
                 try {
                     for (JComponent addClusterButton : addClusterButtonList) {
@@ -380,7 +401,8 @@ public final class GUIData  {
     /** Enable/Disable all 'Add Host' buttons. */
     public void enableAddHostButtons(final boolean enable) {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 mAddHostButtonListReadLock.lock();
                 try {
                     for (JComponent addHostButton : addHostButtonList) {
@@ -517,5 +539,66 @@ public final class GUIData  {
             }
         }
         return bdis;
+    }
+
+    private ServicesInfo getSelectedServicesInfo() {
+        final ClustersPanel csp = clustersPanel;
+        if (csp == null) {
+            return null;
+        }
+        final ClusterTab selected = csp.getClusterTab();
+        if (selected == null) {
+            return null;
+        }
+        //TODO: or drbd
+        final Cluster c = selected.getCluster();
+        if (c == null) {
+            return null;
+        }
+        return c.getBrowser().getServicesInfo();
+    }
+
+    private ResourceGraph getSelectedGraph() {
+        final ClustersPanel csp = clustersPanel;
+        if (csp == null) {
+            return null;
+        }
+        final ClusterTab selected = csp.getClusterTab();
+        if (selected == null) {
+            return null;
+        }
+        //TODO: or drbd
+        final Cluster c = selected.getCluster();
+        if (c == null) {
+            return null;
+        }
+        return c.getBrowser().getHeartbeatGraph();
+    }
+
+    /** Copy / paste function. */
+    public void copy() {
+        final ResourceGraph g = getSelectedGraph();
+        if (g == null) {
+            return;
+        }
+        selectedComponents = g.getSelectedComponents();
+    }
+
+    /** Copy / paste function. */
+    public void paste() {
+        final List<Info> scs = selectedComponents;
+        if (scs == null) {
+            return;
+        }
+        final ServicesInfo ssi = getSelectedServicesInfo();
+        if (ssi == null) {
+            return;
+        }
+        final Thread t = new Thread(new Runnable() {
+            public void run() {
+                ssi.pasteServices(scs);
+            }
+        });
+        t.start();
     }
 }

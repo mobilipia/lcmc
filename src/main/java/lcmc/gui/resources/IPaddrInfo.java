@@ -22,7 +22,7 @@
 package lcmc.gui.resources;
 
 import lcmc.gui.Browser;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.data.ResourceAgent;
 import lcmc.data.AccessMode;
 import lcmc.utilities.Tools;
@@ -56,24 +56,25 @@ final class IPaddrInfo extends ServiceInfo {
      * parameters will be checked only in the cache. This is good if only
      * one value is changed and we don't want to check everything.
      */
-    @Override boolean checkResourceFieldsCorrect(final String param,
-                                                 final String[] params) {
+    @Override
+    boolean checkResourceFieldsCorrect(final String param,
+                                       final String[] params) {
         boolean ret = super.checkResourceFieldsCorrect(param, params);
-        final GuiComboBox cb;
+        final Widget wi;
         if (getResourceAgent().isHeartbeatClass()) {
-            cb = paramComboBoxGet("1", null);
+            wi = getWidget("1", null);
         } else if (getResourceAgent().isOCFClass()) {
-            cb = paramComboBoxGet("ip", null);
+            wi = getWidget("ip", null);
         } else {
             return true;
         }
-        if (cb == null) {
+        if (wi == null) {
             return false;
         }
-        cb.setEditable(true);
-        cb.selectSubnet();
+        wi.setEditable(true);
+        wi.selectSubnet();
         if (ret) {
-            final String ip = cb.getStringValue();
+            final String ip = wi.getStringValue();
             if (!Tools.isIp(ip)) {
                 ret = false;
             }
@@ -82,10 +83,11 @@ final class IPaddrInfo extends ServiceInfo {
     }
 
     /** Returns combo box for parameter. */
-    @Override protected GuiComboBox getParamComboBox(final String param,
-                                                     final String prefix,
-                                                     final int width) {
-        GuiComboBox paramCb;
+    @Override
+    protected Widget createWidget(final String param,
+                                  final String prefix,
+                                  final int width) {
+        Widget paramWi;
         if ("ip".equals(param)) {
             /* get networks */
             String ip = getPreviouslySelected(param, prefix);
@@ -107,30 +109,31 @@ final class IPaddrInfo extends ServiceInfo {
                                     getBrowser().getNetworksNode().children());
 
             final String regexp = "^[\\d.*]*|Select\\.\\.\\.$";
-            paramCb = new GuiComboBox(ip,
-                                      networks,
-                                      null, /* units */
-                                      GuiComboBox.Type.COMBOBOX,
-                                      regexp,
-                                      width,
-                                      null, /* abbrv */
-                                      new AccessMode(
+            paramWi = new Widget(ip,
+                                 networks,
+                                 null, /* units */
+                                 Widget.Type.COMBOBOX,
+                                 regexp,
+                                 width,
+                                 null, /* abbrv */
+                                 new AccessMode(
                                            getAccessType(param),
                                            isEnabledOnlyInAdvancedMode(param)));
 
-            paramCb.setAlwaysEditable(true);
-            paramComboBoxAdd(param, prefix, paramCb);
+            paramWi.setAlwaysEditable(true);
+            widgetAdd(param, prefix, paramWi);
         } else {
-            paramCb = super.getParamComboBox(param, prefix, width);
+            paramWi = super.createWidget(param, prefix, width);
         }
-        return paramCb;
+        return paramWi;
     }
 
     /**
      * Returns string representation of the ip address.
      * In the form of 'ip (interface)'
      */
-    @Override public String toString() {
+    @Override
+    public String toString() {
         final String id = getService().getId();
         if (id == null) {
             return super.toString(); /* this is for 'new IPaddrInfo' */

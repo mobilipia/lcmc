@@ -184,7 +184,6 @@ public abstract class ResourceGraph {
     private volatile Edge existingTestEdge = null;
     /** Lock for test edge list. */
     private final Lock mTestEdgeLock = new ReentrantLock();
-    /** Interval beetween two animation frames. */
     private final int animInterval =
                              (int) (1000 / Tools.getConfigData().getAnimFPS());
     /** Singleton instance of the Line2D edge shape. */
@@ -198,6 +197,10 @@ public abstract class ResourceGraph {
     /** Edge picked paint. */
     private static final Paint EDGE_PICKED_PAINT =
                 (Paint) Tools.getDefaultColor("ResourceGraph.EdgePickedPaint");
+    /** Cache for text layouts. */
+    final private Map<String, TextLayout> textLayoutCache =
+                                            new HashMap<String, TextLayout>();
+
     static {
         final float d = 0.05f;
         for (float i = 0; i < 1.0f; i += d) {
@@ -223,7 +226,8 @@ public abstract class ResourceGraph {
             mAnimationThreadLock.lock();
             if (animationThread == null) {
                 animationThread = new Thread(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         while (true) {
                             try {
                                 Thread.sleep(animInterval);
@@ -283,7 +287,8 @@ public abstract class ResourceGraph {
             if (testAnimationThread == null) {
                 /* start test animation thread */
                 testAnimationThread = new Thread(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         FOREVER: while (true) {
                             try {
                                 startTestLatch.await();
@@ -386,7 +391,8 @@ public abstract class ResourceGraph {
         layout = new StaticLayout<Vertex, Edge>(graph, vlf) {
             /* remove the adjust locations part, because scraling is from 0, 0
             */
-            @Override public final void setSize(final Dimension size) {
+            @Override
+            public final void setSize(final Dimension size) {
                 if (size != null) {
                     this.size = size;
                     initialize();
@@ -462,7 +468,8 @@ public abstract class ResourceGraph {
         final JScrollBar vScrollBar = scrollPane.getVerticalScrollBar();
         vv.addMouseWheelListener(
             new MouseWheelListener() {
-                @Override public void mouseWheelMoved(final MouseWheelEvent e) {
+                @Override
+                public void mouseWheelMoved(final MouseWheelEvent e) {
                     if ((e.getModifiers() & MouseWheelEvent.CTRL_MASK) > 0) {
                         final int amount = e.getWheelRotation();
                         vScrollBar.setValue(vScrollBar.getValue()
@@ -627,7 +634,8 @@ public abstract class ResourceGraph {
             super();
         }
 
-        @Override public String toString() {
+        @Override
+        public String toString() {
             return "V";
         }
     }
@@ -689,7 +697,8 @@ public abstract class ResourceGraph {
         }
 
         /** Returns edge label. */
-        @Override public final String toString() {
+        @Override
+        public final String toString() {
             return " " + getLabelForEdgeStringer(this) + " ";
         }
 
@@ -731,7 +740,8 @@ public abstract class ResourceGraph {
     /** This class provides tool tips for the vertices. */
     class MyVertexToolTipFunction<V> implements Transformer<V, String> {
         /** Returns tool tip for vertex v. */
-        @Override public String transform(final V v) {
+        @Override
+        public String transform(final V v) {
             return Tools.html(getVertexToolTip((Vertex) v));
         }
     }
@@ -739,7 +749,8 @@ public abstract class ResourceGraph {
     /** This class provides tool tips for the vertices. */
     class MyEdgeToolTipFunction<E> implements Transformer<E, String> {
         /** Returns tool tip for edge. */
-        @Override public String transform(final E edge) {
+        @Override
+        public String transform(final E edge) {
             return Tools.html(getEdgeToolTip((Edge) edge));
         }
     }
@@ -815,26 +826,30 @@ public abstract class ResourceGraph {
             this.graph = graphIn;
             this.vlf = vlfIn;
             setSizeTransformer(new Transformer<V, Integer>() {
-                                @Override public Integer transform(final V v) {
+                                @Override
+                                public Integer transform(final V v) {
                                     return getVertexWidth((Vertex) v);
                                 }
                            });
             setAspectRatioTransformer(new Transformer<V, Float>() {
-                                @Override public Float transform(final V v) {
+                                @Override
+                                public Float transform(final V v) {
                                     return getVertexAspectRatio((Vertex) v);
                                 }
                             });
         }
 
         @SuppressWarnings("unchecked")
-        @Override public Shape transform(final V v) {
+        @Override
+        public Shape transform(final V v) {
             return getVertexShape((Vertex) v,
                                   (VertexShapeFactory<Vertex>) factory);
         }
     }
 
     /** Handles right click on the vertex. */
-    protected abstract JPopupMenu handlePopupVertex(final Vertex v,
+    protected abstract JPopupMenu handlePopupVertex(final Vertex vertex,
+                                                    final List<Vertex> pickedV,
                                                     final Point2D p);
 
     /** Adds popup menu item for vertex. */
@@ -899,8 +914,32 @@ public abstract class ResourceGraph {
         }
 
 
+        /**
+         * Is called when mouse was released. Create a multi selection
+         * object. */
+        @Override
+        public void mouseReleased(final MouseEvent e) {
+            SwingUtilities.invokeLater(new Runnable() {
+                public void run() {
+                    final PickedState<Vertex> ps =
+                            vv.getRenderContext().getPickedVertexState();
+                    if (ps.getPicked().size() > 1) {
+                        multiSelection();
+                    }
+                }
+            });
+            if ((e.getModifiers() & MouseEvent.BUTTON3_MASK) != 0) {
+                SwingUtilities.invokeLater(new Runnable() {
+                    public void run() {
+                        handlePopup0(e);
+                    }
+                });
+            }
+        }
+
         /** Is called when mouse was clicked. */
-        @Override public void mouseClicked(final MouseEvent e) {
+        @Override
+        public void mouseClicked(final MouseEvent e) {
             final Point2D popP = e.getPoint();
 
             final int posX = (int) popP.getX();
@@ -922,8 +961,14 @@ public abstract class ResourceGraph {
 
         /** Creates and displays popup menus for vertices and edges. */
         protected void handlePopup(final MouseEvent me) {
+            /* doesn't work on Windows along the mouseReleased handler. */
+        }
+
+        /** Creates and displays popup menus for vertices and edges. */
+        private void handlePopup0(final MouseEvent me) {
             final Thread thread = new Thread(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     final Point2D popP = me.getPoint();
 
                     final int posX = (int) popP.getX();
@@ -942,7 +987,8 @@ public abstract class ResourceGraph {
                                                   handlePopupBackground(popP);
                             if (backgroundPopup != null) {
                                 SwingUtilities.invokeLater(new Runnable() {
-                                    @Override public void run() {
+                                    @Override
+                                    public void run() {
                                         backgroundPopup.show(vv, posX, posY);
                                     }
                                 });
@@ -952,7 +998,8 @@ public abstract class ResourceGraph {
                             final JPopupMenu edgePopup = handlePopupEdge(edge);
                             if (edgePopup != null) {
                                 SwingUtilities.invokeLater(new Runnable() {
-                                    @Override public void run() {
+                                    @Override
+                                    public void run() {
                                         edgePopup.show(vv, posX, posY);
                                     }
                                 });
@@ -960,26 +1007,35 @@ public abstract class ResourceGraph {
                             oneEdgePressed(edge);
                         }
                     } else {
+                        final PickedState<Vertex> ps =
+                                vv.getRenderContext().getPickedVertexState();
+                        final List<Vertex> pickedV =
+                                        new ArrayList<Vertex>(ps.getPicked());
                         final JPopupMenu vertexPopup =
-                                                handlePopupVertex(v, popP);
+                                           handlePopupVertex(v, pickedV, popP);
                         if (vertexPopup != null) {
                             SwingUtilities.invokeLater(new Runnable() {
-                                @Override public void run() {
+                                @Override
+                                public void run() {
                                     vertexPopup.show(vv, posX, posY);
-                                    SwingUtilities.invokeLater(new Runnable() {
-                                        @Override public void run() {
-                                            vertexPopup.pack();
-                                        }
-                                    });
+                                    //SwingUtilities.invokeLater(new Runnable() {
+                                    //    @Override
+                                    //    public void run() {
+                                    //        vertexPopup.pack();
+                                    //    }
+                                    //});
                                 }
                             });
                             SwingUtilities.invokeLater(new Runnable() {
-                                @Override public void run() {
+                                @Override
+                                public void run() {
                                     vertexPopup.pack();
                                 }
                             });
                         }
-                        oneVertexPressed(v); /* select this vertex */
+                        if (pickedV.size() < 2) {
+                            oneVertexPressed(v); /* select this vertex */
+                        }
                     }
                 }
             });
@@ -1079,12 +1135,14 @@ public abstract class ResourceGraph {
         private static final long serialVersionUID = 1L;
 
         /** Graph was clicked. */
-        @Override public void graphClicked(final V v, final MouseEvent me) {
+        @Override
+        public void graphClicked(final V v, final MouseEvent me) {
             /* do nothing */
         }
 
         /** Graph was released. */
-        @Override public void graphReleased(final V v, final MouseEvent me) {
+        @Override
+        public void graphReleased(final V v, final MouseEvent me) {
             final PickedState<Vertex> ps =
                                 vv.getRenderContext().getPickedVertexState();
             for (final Vertex vertex : ps.getPicked()) {
@@ -1105,17 +1163,19 @@ public abstract class ResourceGraph {
         }
 
         /** Graph was pressed. */
-        @Override public void graphPressed(final V v, final MouseEvent me) {
+        @Override
+        public void graphPressed(final V v, final MouseEvent me) {
             final Thread t = new Thread(new Runnable() {
                 public void run() {
-            final PickedState<Vertex> psVertex =
+                    final PickedState<Vertex> psVertex =
                                   vv.getRenderContext().getPickedVertexState();
-            if ((me.getModifiers() & MouseEvent.CTRL_MASK) != 0) {
-                    /* ctrl-click */
-                psVertex.pick((Vertex) v, true);
-            } else if (psVertex.getPicked().size() == 1) {
-                oneVertexPressed((Vertex) v);
-            }
+                    if ((me.getModifiers() & MouseEvent.CTRL_MASK) != 0) {
+                            /* ctrl-click */
+                        psVertex.pick((Vertex) v, true);
+                    } else if (psVertex.getPicked().size() == 1
+                               || !psVertex.getPicked().contains(v)) {
+                        oneVertexPressed((Vertex) v);
+                    }
                 }
             });
             t.start();
@@ -1174,7 +1234,8 @@ public abstract class ResourceGraph {
         }
 
         /** Returns paint color for border of vertex v. */
-        @Override public Paint transform(final V v) {
+        @Override
+        public Paint transform(final V v) {
             if (draw && isPicked(v)) {
                 return getVertexDrawPaint((Vertex) v);
             } else {
@@ -1246,7 +1307,8 @@ public abstract class ResourceGraph {
         }
 
         /** Returns paint color for border of edge e. */
-        @Override public Paint transform(final E e)  {
+        @Override
+        public Paint transform(final E e)  {
             return getDrawPaint((Edge) e);
         }
     }
@@ -1272,7 +1334,8 @@ public abstract class ResourceGraph {
         }
 
         /** Returns paint color for border of edge e. */
-        @Override public Paint transform(final E e)  {
+        @Override
+        public Paint transform(final E e)  {
             if (showHollowArrow((Edge) e)) {
                 return Color.WHITE;
             }
@@ -1292,8 +1355,8 @@ public abstract class ResourceGraph {
          * Returns the shape of the arrow, or not if no arrow should be
          * painted.
          */
-        @Override public Shape transform(
-                                    final Context<Graph<V, E>, E> context) {
+        @Override
+        public Shape transform(final Context<Graph<V, E>, E> context) {
             if (showEdgeArrow((Edge) context.element)) {
                 return super.transform(context);
             } else {
@@ -1358,13 +1421,14 @@ public abstract class ResourceGraph {
          * Paints the shape for vertex and all icons and texts inside. It
          * resizes and repositions the vertex if neccessary.
          */
-        @Override protected final void paintShapeForVertex(
-                                                 final RenderContext<V, E> rc,
+        @Override
+        protected final void paintShapeForVertex(final RenderContext<V, E> rc,
                                                  final V v,
                                                  final Shape shape) {
             final Graphics2D g2d = rc.getGraphicsContext().getDelegate();
             int shapeWidth = getDefaultVertexWidth((Vertex) v);
             int shapeHeight = getDefaultVertexHeight((Vertex) v);
+
             /* icons */
             final List<ImageIcon> icons =
                                    getIconsForVertex((Vertex) v, isTestOnly());
@@ -1472,6 +1536,7 @@ public abstract class ResourceGraph {
                     });
                 }
             }
+
             /* shape */
             super.paintShapeForVertex(rc, v, shape);
             Point2D loc = layout.transform((Vertex) v);
@@ -1627,6 +1692,9 @@ public abstract class ResourceGraph {
     /** Returns id that is used for saving of the vertex positions to a file. */
     protected abstract String getId(final Info i);
 
+    /** Select multiple services. */
+    protected abstract void multiSelection();
+
     /** Returns saved position for the specified resource. */
     final Point2D getSavedPosition(final Info info) {
         if (info == null) {
@@ -1655,13 +1723,19 @@ public abstract class ResourceGraph {
     private TextLayout getVertexTextLayout(final Graphics2D g2d,
                                            final String text,
                                            final double fontSizeFactor) {
+        final TextLayout ctl = textLayoutCache.get(fontSizeFactor + ':' + text);
+        if (ctl != null) {
+            return ctl;
+        }
         final Font font = Tools.getGUIData().getMainFrame().getFont();
         final FontRenderContext context = g2d.getFontRenderContext();
-        return new TextLayout(text,
+        TextLayout tl = new TextLayout(text,
                               new Font(font.getName(),
                                        font.getStyle(),
                                        (int) (font.getSize() * fontSizeFactor)),
                               context);
+        textLayoutCache.put(fontSizeFactor + ':' + text, tl);
+        return tl;
     }
 
     /** Draws text on the vertex. */
@@ -1797,8 +1871,8 @@ public abstract class ResourceGraph {
          * shared instance or, in the case of self-loop edges, the
          * SimpleLoop shared instance.
          */
-        @Override public Shape transform(
-                                       final Context<Graph<V, E>, E> context) {
+        @Override
+        public Shape transform(final Context<Graph<V, E>, E> context) {
             final Graph<V, E> g = context.graph;
             final E e = context.element;
             if (!(e instanceof Edge)) {
@@ -1845,9 +1919,10 @@ public abstract class ResourceGraph {
                 super.scale(thisVV, amount, from);
             }
 
-            @Override public void scale(final VisualizationServer thisVV,
-                                        final float amount,
-                                        final Point2D from) {
+            @Override
+            public void scale(final VisualizationServer thisVV,
+                              final float amount,
+                              final Point2D from) {
                 final JScrollBar sbV = getScrollPane().getVerticalScrollBar();
                 final JScrollBar sbH = getScrollPane().getHorizontalScrollBar();
                 final Point2D last = posWithScrollbar(getLastPosition());
@@ -1860,7 +1935,8 @@ public abstract class ResourceGraph {
                 final double height =
                                  getVisualizationViewer().getSize().getHeight();
                 SwingUtilities.invokeLater(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         final Point2D prevPoint =
                             getVisualizationViewer()
                                 .getRenderContext()
@@ -1937,5 +2013,21 @@ public abstract class ResourceGraph {
         }
         putVertexLocations();
         return new Point2D.Double(lastX, lastY + 40);
+    }
+
+    /** Get selected components for copy/paste. */
+    public List<Info> getSelectedComponents() {
+        final String cn = getClusterBrowser().getCluster().getName();
+        Tools.startProgressIndicator(cn, "copy");
+        final List<Info> selected = new ArrayList<Info>();
+        final PickedState<Vertex> ps =
+                getVisualizationViewer().getRenderContext()
+                                                    .getPickedVertexState();
+        for (final Vertex v : ps.getPicked()) {
+            final Info i = getInfo(v);
+            selected.add(i);
+        }
+        Tools.stopProgressIndicator(cn, "copy");
+        return selected;
     }
 }

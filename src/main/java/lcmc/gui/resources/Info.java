@@ -23,9 +23,8 @@
 package lcmc.gui.resources;
 
 import lcmc.gui.Browser;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.data.resources.Resource;
-import lcmc.data.ConfigData;
 import lcmc.data.AccessMode;
 import lcmc.utilities.ButtonCallback;
 import lcmc.utilities.Unit;
@@ -40,6 +39,7 @@ import javax.swing.JEditorPane;
 import javax.swing.JPanel;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.JComponent;
+import javax.swing.text.JTextComponent;
 import javax.swing.JPopupMenu;
 import javax.swing.JMenu;
 import javax.swing.SwingUtilities;
@@ -57,24 +57,16 @@ import javax.swing.AbstractButton;
 import javax.swing.event.PopupMenuEvent;
 import javax.swing.event.PopupMenuListener;
 
-import java.awt.GradientPaint;
-import java.awt.Graphics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
 import java.awt.event.MouseAdapter;
 import java.awt.event.MouseEvent;
 import java.awt.Font;
 import java.awt.Component;
 import java.awt.geom.Point2D;
-import java.awt.geom.Rectangle2D;
 import java.awt.Dimension;
 import java.awt.event.MouseListener;
-import java.awt.event.ActionEvent;
-import java.awt.event.ActionListener;
 import java.awt.Point;
 import java.awt.Color;
 import java.awt.FlowLayout;
-import java.awt.Insets;
 import java.awt.event.MouseMotionListener;
 import java.util.Comparator;
 import java.util.List;
@@ -110,8 +102,8 @@ public class Info implements Comparable {
     private JEditorPane resourceInfoArea;
 
     /** Map from parameter to its user-editable widget. */
-    private final Map<String, GuiComboBox> paramComboBoxHash =
-              Collections.synchronizedMap(new HashMap<String, GuiComboBox>());
+    private final Map<String, Widget> widgetHash =
+              Collections.synchronizedMap(new HashMap<String, Widget>());
     /** popup menu for this object. */
     private JPopupMenu popup;
     /** Popup object lock. */
@@ -138,8 +130,11 @@ public class Info implements Comparable {
     /** Log file icon. */
     public static final ImageIcon LOGFILE_ICON = Tools.createImageIcon(
                                   Tools.getDefault("Info.LogIcon"));
-    /** Hash from component to the access mode. */
-    private final Map<JComponent, AccessMode> componentToAccessMode =
+    /** Hash from component to the edit access mode. */
+    private final Map<JTextComponent, AccessMode> componentToEditAccessMode =
+                                     new HashMap<JTextComponent, AccessMode>();
+    /** Hash from component to the enable access mode. */
+    private final Map<JComponent, AccessMode> componentToEnableAccessMode =
                                          new HashMap<JComponent, AccessMode>();
 
     /**
@@ -184,60 +179,59 @@ public class Info implements Comparable {
     }
 
     /** Adds the widget for parameter. */
-    protected final void paramComboBoxAdd(final String param,
-                                          final String prefix,
-                                          final GuiComboBox paramCb) {
+    protected final void widgetAdd(final String param,
+                                   final String prefix,
+                                   final Widget paramWi) {
         if (prefix == null) {
-            paramComboBoxHash.put(param, paramCb);
+            widgetHash.put(param, paramWi);
         } else {
-            paramComboBoxHash.put(prefix + ":" + param, paramCb);
+            widgetHash.put(prefix + ":" + param, paramWi);
         }
     }
 
     /** Returns the widget for the parameter. */
-    public final GuiComboBox paramComboBoxGet(final String param,
-                                                        final String prefix) {
+    public final Widget getWidget(final String param, final String prefix) {
         if (prefix == null) {
-            return paramComboBoxHash.get(param);
+            return widgetHash.get(param);
         } else {
-            return paramComboBoxHash.get(prefix + ":" + param);
+            return widgetHash.get(prefix + ":" + param);
         }
     }
 
-    /** Returns true if the paramComboBox contains the parameter. */
-    protected final boolean paramComboBoxContains(final String param,
-                                                  final String prefix) {
+    /** Returns true if the widget hash contains the parameter. */
+    protected final boolean widgetContains(final String param,
+                                           final String prefix) {
         if (prefix == null) {
-            return paramComboBoxHash.containsKey(param);
+            return widgetHash.containsKey(param);
         } else {
-            return paramComboBoxHash.containsKey(prefix + ":" + param);
+            return widgetHash.containsKey(prefix + ":" + param);
         }
     }
 
-    /** Removes the parameter from the paramComboBox hash. */
-    protected final GuiComboBox paramComboBoxRemove(final String param,
-                                                    final String prefix) {
+    /** Removes the parameter from the widget hash. */
+    protected final Widget widgetRemove(final String param,
+                                               final String prefix) {
         if (prefix == null) {
-            if (paramComboBoxHash.containsKey(param)) {
-                paramComboBoxHash.get(param).cleanup();
-                return paramComboBoxHash.remove(param);
+            if (widgetHash.containsKey(param)) {
+                widgetHash.get(param).cleanup();
+                return widgetHash.remove(param);
             }
             return null;
         } else {
-            if (paramComboBoxHash.containsKey(prefix + ":" + param)) {
-                paramComboBoxHash.get(prefix + ":" + param).cleanup();
-                return paramComboBoxHash.remove(prefix + ":" + param);
+            if (widgetHash.containsKey(prefix + ":" + param)) {
+                widgetHash.get(prefix + ":" + param).cleanup();
+                return widgetHash.remove(prefix + ":" + param);
             }
             return null;
         }
     }
 
-    /** Clears the whole paramComboBox hash. */
-    protected final void paramComboBoxClear() {
-        for (final String param : paramComboBoxHash.keySet()) {
-            paramComboBoxHash.get(param).cleanup();
+    /** Clears the whole widget hash. */
+    protected final void widgetClear() {
+        for (final String param : widgetHash.keySet()) {
+            widgetHash.get(param).cleanup();
         }
-        paramComboBoxHash.clear();
+        widgetHash.clear();
     }
 
     /** Sets the terminal panel, if necessary. */
@@ -314,7 +308,8 @@ public class Info implements Comparable {
             if (newInfo != null && !newInfo.equals(infoCache)) {
                 infoCache = newInfo;
                 SwingUtilities.invokeLater(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         ria.setText(newInfo);
                     }
                 });
@@ -350,14 +345,17 @@ public class Info implements Comparable {
             panel.setBackground(Browser.PANEL_BACKGROUND);
             return panel;
         } else {
-            final Font f = new Font("Monospaced", Font.PLAIN, 12);
+            final Font f = new Font(
+                                "Monospaced",
+                                Font.PLAIN,
+                                Tools.getConfigData().scaled(12));
             resourceInfoArea = new JEditorPane(getInfoType(), info);
             resourceInfoArea.setMinimumSize(new Dimension(
-                Tools.getDefaultInt("HostBrowser.ResourceInfoArea.Width"),
-                Tools.getDefaultInt("HostBrowser.ResourceInfoArea.Height")));
+                Tools.getDefaultSize("HostBrowser.ResourceInfoArea.Width"),
+                Tools.getDefaultSize("HostBrowser.ResourceInfoArea.Height")));
             resourceInfoArea.setPreferredSize(new Dimension(
-                Tools.getDefaultInt("HostBrowser.ResourceInfoArea.Width"),
-                Tools.getDefaultInt("HostBrowser.ResourceInfoArea.Height")));
+                Tools.getDefaultSize("HostBrowser.ResourceInfoArea.Width"),
+                Tools.getDefaultSize("HostBrowser.ResourceInfoArea.Height")));
             resourceInfoArea.setEditable(false);
             resourceInfoArea.setFont(f);
             resourceInfoArea.setBackground(Browser.PANEL_BACKGROUND);
@@ -393,7 +391,8 @@ public class Info implements Comparable {
     }
 
     /** Returns name of the object. */
-    @Override public String toString() {
+    @Override
+    public String toString() {
         return name;
     }
 
@@ -473,11 +472,13 @@ public class Info implements Comparable {
                                 final int x,
                                 final int y) {
         final Thread thread = new Thread(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 final JPopupMenu pm = getPopup();
                 if (pm != null) {
                     SwingUtilities.invokeLater(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             pm.show(c, x, y);
                         }
                     });
@@ -504,7 +505,8 @@ public class Info implements Comparable {
         mPopupLock.unlock();
         if (popup0 != null) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     popup0.setVisible(false);
                 }
             });
@@ -523,7 +525,8 @@ public class Info implements Comparable {
                 registerAllMenuItems(items);
                 try {
                     SwingUtilities.invokeAndWait(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             popup = new JPopupMenu();
                         }
                     });
@@ -533,7 +536,8 @@ public class Info implements Comparable {
                     Tools.printStackTrace();
                 }
                 SwingUtilities.invokeLater(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         for (final UpdatableItem u : items) {
                             popup.add((JMenuItem) u);
                         }
@@ -558,7 +562,8 @@ public class Info implements Comparable {
                 registerAllMenuItems(items);
                 try {
                     SwingUtilities.invokeAndWait(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             popup = new JPopupMenu();
                         }
                     });
@@ -569,7 +574,8 @@ public class Info implements Comparable {
                 }
                 for (final UpdatableItem u : items) {
                     SwingUtilities.invokeLater(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             popup.add((JMenuItem) u);
                         }
                     });
@@ -589,23 +595,24 @@ public class Info implements Comparable {
     private void addPopupMenuListener(final JPopupMenu pm,
                                       final AbstractButton b) {
         pm.addPopupMenuListener(new PopupMenuListener() {
-            @Override public void popupMenuCanceled(final PopupMenuEvent e) {
+            @Override
+            public void popupMenuCanceled(final PopupMenuEvent e) {
                 SwingUtilities.invokeLater(new Runnable() {
                     public void run() {
                         b.setSelected(false);
                     }
                 });
             }
-            @Override public void popupMenuWillBecomeInvisible(
-                                                    final PopupMenuEvent e) {
+            @Override
+            public void popupMenuWillBecomeInvisible(final PopupMenuEvent e) {
                 SwingUtilities.invokeLater(new Runnable() {
                     public void run() {
                         b.setSelected(false);
                     }
                 });
             }
-            @Override public void popupMenuWillBecomeVisible(
-                                                    final PopupMenuEvent e) {
+            @Override
+            public void popupMenuWillBecomeVisible(final PopupMenuEvent e) {
             }
         });
     }
@@ -634,7 +641,8 @@ public class Info implements Comparable {
         Tools.makeMiniButton(b);
         b.addMouseListener(
             new MouseAdapter() {
-                @Override public void mousePressed(final MouseEvent e) {
+                @Override
+                public void mousePressed(final MouseEvent e) {
                     final JToggleButton source =
                                               (JToggleButton) (e.getSource());
                     if (source.isSelected()) {
@@ -645,7 +653,8 @@ public class Info implements Comparable {
                         });
                     } else {
                         final Thread thread = new Thread(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 final JPopupMenu pm = getPopup();
                                 if (pm != null) {
                                     SwingUtilities.invokeLater(new Runnable() {
@@ -730,14 +739,17 @@ public class Info implements Comparable {
             return;
         }
         c.addMouseListener(new MouseListener() {
-            @Override public void mouseClicked(final MouseEvent e) {
+            @Override
+            public void mouseClicked(final MouseEvent e) {
                 /* do nothing */
             }
 
-            @Override public void mouseEntered(final MouseEvent e) {
+            @Override
+            public void mouseEntered(final MouseEvent e) {
                 if (c.isShowing() && c.isEnabled()) {
                     final Thread thread = new Thread(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             bc.mouseOver();
                         }
                     });
@@ -745,28 +757,33 @@ public class Info implements Comparable {
                 }
             }
 
-            @Override public void mouseExited(final MouseEvent e) {
+            @Override
+            public void mouseExited(final MouseEvent e) {
                 final Thread t = new Thread(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         bc.mouseOut();
                     }
                 });
                 t.start();
             }
 
-            @Override public void mousePressed(final MouseEvent e) {
+            @Override
+            public void mousePressed(final MouseEvent e) {
                 mouseExited(e);
                 /* do nothing */
             }
 
-            @Override public void mouseReleased(final MouseEvent e) {
+            @Override
+            public void mouseReleased(final MouseEvent e) {
                 /* do nothing */
             }
         });
     }
 
     /** Compares ignoring case. */
-    @Override public int compareTo(final Object o) {
+    @Override
+    public int compareTo(final Object o) {
         return toString().compareToIgnoreCase(o.toString());
     }
 
@@ -901,7 +918,8 @@ public class Info implements Comparable {
             table.addMouseMotionListener(new MouseMotionListener() {
                 private int row;
 
-                @Override public void mouseMoved(final MouseEvent me) {
+                @Override
+                public void mouseMoved(final MouseEvent me) {
                    final Point p = me.getPoint();
                    final int newRow = table.rowAtPoint(p);
                    if (row >= 0 && newRow != row) {
@@ -928,7 +946,8 @@ public class Info implements Comparable {
                        }
                    }
                 }
-                @Override public void mouseDragged(final MouseEvent me) {
+                @Override
+                public void mouseDragged(final MouseEvent me) {
                     /* nothing */
                 }
             });
@@ -937,7 +956,8 @@ public class Info implements Comparable {
                 private boolean paintIt = false;
                 private boolean paintItMouseOver = false;
 
-                @Override public final void mouseClicked(final MouseEvent e) {
+                @Override
+                public final void mouseClicked(final MouseEvent e) {
                     if (e.getClickCount() > 1
                         || SwingUtilities.isRightMouseButton(e)) {
                         return;
@@ -950,7 +970,8 @@ public class Info implements Comparable {
                     rowClicked(tableName, keyB.getText(), column);
                 }
 
-                @Override public final void mousePressed(final MouseEvent e) {
+                @Override
+                public final void mousePressed(final MouseEvent e) {
                     final JTable table = (JTable) e.getSource();
                     final Point p = e.getPoint();
                     row = table.rowAtPoint(p);
@@ -973,7 +994,8 @@ public class Info implements Comparable {
                     paintIt = true;
                 }
 
-                @Override public final void mouseReleased(final MouseEvent e) {
+                @Override
+                public final void mouseReleased(final MouseEvent e) {
                     if (paintIt) {
                         for (int c = 0; c < table.getColumnCount(); c++) {
                             final Object v = table.getValueAt(row, c);
@@ -987,7 +1009,8 @@ public class Info implements Comparable {
                     paintIt = false;
                 }
 
-                @Override public final void mouseEntered(final MouseEvent e) {
+                @Override
+                public final void mouseEntered(final MouseEvent e) {
                     final JTable table = (JTable) e.getSource();
                     final Point p = e.getPoint();
                     final int row = table.rowAtPoint(p);
@@ -1005,7 +1028,8 @@ public class Info implements Comparable {
                     }
                 }
 
-                @Override public final void mouseExited(final MouseEvent e) {
+                @Override
+                public final void mouseExited(final MouseEvent e) {
                     if (paintItMouseOver) {
                         for (int i = 0; i < table.getRowCount(); i++) {
                             for (int c = 0; c < table.getColumnCount(); c++) {
@@ -1058,7 +1082,8 @@ public class Info implements Comparable {
             final String[] colNames = getColumnNames(tableName);
             if (colNames != null && colNames.length > 0) {
                 SwingUtilities.invokeLater(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         final Object[][] data = getTableData(tableName);
                         Tools.debug(this, "update table in: " + getName(), 1);
                         tableModel.setDataVector(data, colNames);
@@ -1135,18 +1160,30 @@ public class Info implements Comparable {
         return toString();
     }
 
-    /** Register component access mode. */
-    protected void registerComponentAccessMode(final JComponent component,
-                                               final AccessMode mode) {
-        componentToAccessMode.put(component, mode);
+    /** Register component edit access mode. */
+    protected void registerComponentEditAccessMode(
+                                                final JTextComponent component,
+                                                final AccessMode mode) {
+        componentToEditAccessMode.put(component, mode);
     }
 
-    /** Process Access Lists. */
+    /** Register component enable access mode. */
+    protected void registerComponentEnableAccessMode(final JComponent component,
+                                                     final AccessMode mode) {
+        componentToEnableAccessMode.put(component, mode);
+    }
+
+    /** Process access lists. TODO: rename.*/
     public void updateAdvancedPanels() {
-        for (final JComponent c : componentToAccessMode.keySet()) {
+        for (final JComponent c : componentToEnableAccessMode.keySet()) {
             final boolean accessible = Tools.getConfigData().isAccessible(
-                                                 componentToAccessMode.get(c));
+                                           componentToEnableAccessMode.get(c));
             c.setEnabled(accessible);
+        }
+        for (final JTextComponent c : componentToEditAccessMode.keySet()) {
+            final boolean accessible = Tools.getConfigData().isAccessible(
+                                             componentToEditAccessMode.get(c));
+            c.setEditable(accessible);
         }
     }
 }

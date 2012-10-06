@@ -25,7 +25,7 @@ import lcmc.data.ConfigData;
 import lcmc.data.AccessMode;
 import lcmc.utilities.Tools;
 import lcmc.gui.SpringUtilities;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.gui.dialog.WizardDialog;
 
 import javax.swing.JPanel;
@@ -48,9 +48,9 @@ public class LinbitLogin extends DialogHost {
     /** Serial version UID. */
     private static final long serialVersionUID = 1L;
     /** Field with user name. */
-    private GuiComboBox downloadUserField;
+    private Widget downloadUserField;
     /** Field with password. */
-    private GuiComboBox downloadPasswordField;
+    private Widget downloadPasswordField;
     /** Checkbox to save the info. */
     private JCheckBox saveCheckBox;
     /** Width of the check boxes. */
@@ -63,7 +63,8 @@ public class LinbitLogin extends DialogHost {
     }
 
     /** Finishes the dialog and sets the information. */
-    @Override protected final void finishDialog() {
+    @Override
+    protected final void finishDialog() {
         Tools.getConfigData().setDownloadLogin(
                                 downloadUserField.getStringValue().trim(),
                                 downloadPasswordField.getStringValue().trim(),
@@ -71,7 +72,8 @@ public class LinbitLogin extends DialogHost {
     }
 
     /** Returns the next dialog. */
-    @Override public WizardDialog nextDialog() {
+    @Override
+    public WizardDialog nextDialog() {
         return new DrbdLinbitInst(this, getHost());
     }
 
@@ -81,7 +83,8 @@ public class LinbitLogin extends DialogHost {
      */
     protected final void checkFields() {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 boolean v =
                     (downloadUserField.getStringValue().trim().length() > 0);
                 v = v & (downloadPasswordField.getStringValue().trim().length()
@@ -92,9 +95,11 @@ public class LinbitLogin extends DialogHost {
     }
 
     /** Check all fields if they are correct. */
-    @Override protected final void checkFields(final GuiComboBox field) {
+    @Override
+    protected final void checkFields(final Widget field) {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 boolean v =
                     (downloadUserField.getStringValue().trim().length() > 0);
                 v = v & (downloadPasswordField.getStringValue().trim().length()
@@ -108,7 +113,8 @@ public class LinbitLogin extends DialogHost {
      * Returns the title of the dialog, defined as
      * Dialog.Host.LinbitLogin.Title in TextResources.
      */
-    @Override protected final String getHostDialogTitle() {
+    @Override
+    protected final String getHostDialogTitle() {
         return Tools.getString("Dialog.Host.LinbitLogin.Title");
     }
 
@@ -116,22 +122,26 @@ public class LinbitLogin extends DialogHost {
      * Returns the description of the dialog, defined as
      * Dialog.Host.LinbitLogin.Description in TextResources.
      */
-    @Override protected final String getDescription() {
+    @Override
+    protected final String getDescription() {
         return Tools.getString("Dialog.Host.LinbitLogin.Description");
     }
 
     /** Inits the dialog. */
-    @Override protected final void initDialog() {
+    @Override
+    protected final void initDialog() {
         super.initDialog();
         enableComponentsLater(new JComponent[]{buttonClass(nextButton())});
     }
 
     /** Inits the dialog after it becomes visible. */
-    @Override protected void initDialogAfterVisible() {
+    @Override
+    protected void initDialogAfterVisible() {
         enableComponents();
         checkFields();
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 downloadUserField.requestFocus();
             }
         });
@@ -145,7 +155,8 @@ public class LinbitLogin extends DialogHost {
      * Returns the input pane, where user can enter the user name, password and
      * can select a check box to save the info for later.
      */
-    @Override protected final JComponent getInputPane() {
+    @Override
+    protected final JComponent getInputPane() {
         final JPanel p = new JPanel(new BorderLayout());
         final JPanel inputPane = new JPanel(new SpringLayout());
         inputPane.setBackground(
@@ -155,16 +166,15 @@ public class LinbitLogin extends DialogHost {
         final JLabel userLabel = new JLabel(
                       Tools.getString("Dialog.Host.LinbitLogin.EnterUser"));
         inputPane.add(userLabel);
-        downloadUserField = new GuiComboBox(
-                                        Tools.getConfigData().getDownloadUser(),
-                                        null, /* items */
-                                        null, /* units */
-                                        null, /* type */
-                                        "^[,\\w.-]+$",
-                                        CHECKBOX_WIDTH,
-                                        null, /* abbrv */
-                                        new AccessMode(ConfigData.AccessType.RO,
-                                                       false)); /* only adv. */
+        downloadUserField = new Widget(Tools.getConfigData().getDownloadUser(),
+                                       null, /* items */
+                                       null, /* units */
+                                       null, /* type */
+                                       "^[,\\w.-]+$",
+                                       CHECKBOX_WIDTH,
+                                       null, /* abbrv */
+                                       new AccessMode(ConfigData.AccessType.RO,
+                                                      false)); /* only adv. */
 
         addCheckField(downloadUserField);
         userLabel.setLabelFor(downloadUserField);
@@ -175,11 +185,11 @@ public class LinbitLogin extends DialogHost {
                   Tools.getString("Dialog.Host.LinbitLogin.EnterPassword"));
 
         inputPane.add(passwordLabel);
-        downloadPasswordField = new GuiComboBox(
+        downloadPasswordField = new Widget(
                                   Tools.getConfigData().getDownloadPassword(),
                                   null, /* items */
                                   null, /* units */
-                                  GuiComboBox.Type.PASSWDFIELD,
+                                  Widget.Type.PASSWDFIELD,
                                   null, /* type */
                                   CHECKBOX_WIDTH,
                                   null, /* abbrv */

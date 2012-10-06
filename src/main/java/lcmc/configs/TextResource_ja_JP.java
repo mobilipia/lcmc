@@ -29,7 +29,8 @@ import java.util.Arrays;
 public final class TextResource_ja_JP extends java.util.ListResourceBundle {
 
     /** Get contents. */
-    @Override protected Object[][] getContents() {
+    @Override
+    protected Object[][] getContents() {
         return Arrays.copyOf(contents, contents.length);
     }
 
@@ -1786,10 +1787,10 @@ public final class TextResource_ja_JP extends java.util.ListResourceBundle {
         {"CRMXML.OrderSectionParams",
          "順序制約(order)パラメータ"},
 
-        {"GuiComboBox.Select",
+        {"Widget.Select",
          "選択..."},
 
-        {"GuiComboBox.NothingSelected",
+        {"Widget.NothingSelected",
          "<<選択なし>>"},
 
         {"HeartbeatGraph.ColOrd",

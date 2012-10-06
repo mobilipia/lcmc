@@ -27,7 +27,8 @@ import lcmc.data.AccessMode;
 import lcmc.configs.DistResource;
 import lcmc.utilities.Tools;
 import lcmc.utilities.SSH;
-import lcmc.gui.GuiComboBox;
+import lcmc.utilities.WidgetListener;
+import lcmc.gui.Widget;
 import lcmc.gui.Browser;
 
 import java.util.Map;
@@ -45,9 +46,9 @@ final class FilesystemInfo extends ServiceInfo {
     /** drbddisk service object. */
     private DrbddiskInfo drbddiskInfo = null;
     /** Block device combo box. */
-    private GuiComboBox blockDeviceParamCb = null;
+    private Widget blockDeviceParamWi = null;
     /** Filesystem type combo box. */
-    private GuiComboBox fstypeParamCb = null;
+    private Widget fstypeParamWi = null;
     /** Whether old style drbddisk is preferred. */
     private boolean drbddiskIsPreferred = false;
     /** Name of the device parameter in the file system. */
@@ -107,24 +108,27 @@ final class FilesystemInfo extends ServiceInfo {
      * parameters will be checked only in the cache. This is good if only
      * one value is changed and we don't want to check everything.
      */
-    @Override boolean checkResourceFieldsCorrect(final String param,
-                                                 final String[] params) {
+    @Override
+    boolean checkResourceFieldsCorrect(final String param,
+                                       final String[] params) {
         final boolean ret = super.checkResourceFieldsCorrect(param, params);
         if (!ret) {
             return false;
         }
-        final GuiComboBox cb = paramComboBoxGet(FS_RES_PARAM_DEV, null);
-        if (cb == null || cb.getValue() == null) {
+        final Widget wi = getWidget(FS_RES_PARAM_DEV, null);
+        if (wi == null || wi.getValue() == null) {
             return false;
         }
         return true;
     }
 
     /** Applies changes to the Filesystem service parameters. */
-    @Override void apply(final Host dcHost, final boolean testOnly) {
+    @Override
+    void apply(final Host dcHost, final boolean testOnly) {
         if (!testOnly) {
             Tools.invokeAndWait(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     getApplyButton().setEnabled(false);
                     getRevertButton().setEnabled(false);
                 }
@@ -179,18 +183,16 @@ final class FilesystemInfo extends ServiceInfo {
     }
 
     /** Adds combo box listener for the parameter. */
-    private void addParamComboListeners(final GuiComboBox paramCb) {
-        paramCb.addListeners(
-            new ItemListener() {
-                @Override public void itemStateChanged(final ItemEvent e) {
-                    if (e.getStateChange() == ItemEvent.SELECTED
-                        && fstypeParamCb != null) {
-                        final Thread thread = new Thread(new Runnable() {
-                            @Override public void run() {
-                                if (!(e.getItem() instanceof Info)) {
+    private void addParamComboListeners(final Widget paramWi) {
+        paramWi.addListeners(
+                    new WidgetListener() {
+                        @Override
+                        public void check(final Object value) {
+                            if (fstypeParamWi != null) {
+                                if (!(value instanceof Info)) {
                                     return;
                                 }
-                                final Info item = (Info) e.getItem();
+                                final Info item = (Info) value;
                                 if (item.getStringValue() == null
                                     || "".equals(item.getStringValue())) {
                                     return;
@@ -208,22 +210,19 @@ final class FilesystemInfo extends ServiceInfo {
                                 }
                                 if (createdFs != null
                                     && !"".equals(createdFs)) {
-                                    fstypeParamCb.setValue(createdFs);
+                                    fstypeParamWi.setValue(createdFs);
                                 }
                             }
-                        });
-                        thread.start();
-                    }
-                }
-            },
-            null);
+                        }
+                    });
     }
 
     /** Returns editable element for the parameter. */
-    @Override protected GuiComboBox getParamComboBox(final String param,
-                                                     final String prefix,
-                                                     final int width) {
-        GuiComboBox paramCb;
+    @Override
+    protected Widget createWidget(final String param,
+                                  final String prefix,
+                                  final int width) {
+        Widget paramWi;
         if (FS_RES_PARAM_DEV.equals(param)) {
             String selectedValue = getPreviouslySelected(param, prefix);
             if (selectedValue == null) {
@@ -245,20 +244,20 @@ final class FilesystemInfo extends ServiceInfo {
             final Info[] commonBlockDevInfos =
                                         getCommonBlockDevInfos(defaultValue,
                                                                getName());
-            paramCb = new GuiComboBox(selectedValue,
-                                      commonBlockDevInfos,
-                                      null, /* units */
-                                      null, /* type */
-                                      null, /* regexp */
-                                      width,
-                                      null, /* abbrv */
-                                      new AccessMode(
+            paramWi = new Widget(selectedValue,
+                                 commonBlockDevInfos,
+                                 null, /* units */
+                                 null, /* type */
+                                 null, /* regexp */
+                                 width,
+                                 null, /* abbrv */
+                                 new AccessMode(
                                            getAccessType(param),
                                            isEnabledOnlyInAdvancedMode(param)));
-            paramCb.setAlwaysEditable(true);
-            blockDeviceParamCb = paramCb;
-            addParamComboListeners(paramCb);
-            paramComboBoxAdd(param, prefix, paramCb);
+            paramWi.setAlwaysEditable(true);
+            blockDeviceParamWi = paramWi;
+            addParamComboListeners(paramWi);
+            widgetAdd(param, prefix, paramWi);
         } else if ("fstype".equals(param)) {
             final String defaultValue =
                         Tools.getString("ClusterBrowser.SelectFilesystem");
@@ -269,7 +268,7 @@ final class FilesystemInfo extends ServiceInfo {
             if (selectedValue == null || "".equals(selectedValue)) {
                 selectedValue = defaultValue;
             }
-            paramCb = new GuiComboBox(
+            paramWi = new Widget(
                               selectedValue,
                               getBrowser().getCommonFileSystems(defaultValue),
                               null, /* units */
@@ -280,10 +279,10 @@ final class FilesystemInfo extends ServiceInfo {
                               new AccessMode(
                                        getAccessType(param),
                                        isEnabledOnlyInAdvancedMode(param)));
-            fstypeParamCb = paramCb;
+            fstypeParamWi = paramWi;
 
-            paramComboBoxAdd(param, prefix, paramCb);
-            paramCb.setEditable(false);
+            widgetAdd(param, prefix, paramWi);
+            paramWi.setEditable(false);
         } else if ("directory".equals(param)) {
             final String[] cmp = getBrowser().getCommonMountPoints();
             Object[] items = new Object[cmp.length + 1];
@@ -307,26 +306,27 @@ final class FilesystemInfo extends ServiceInfo {
                 selectedValue = defaultValue;
             }
             final String regexp = "^.+$";
-            paramCb = new GuiComboBox(selectedValue,
-                                      items,
-                                      null, /* units */
-                                      null, /* type */
-                                      regexp,
-                                      width,
-                                      null, /* abbrv */
-                                      new AccessMode(
+            paramWi = new Widget(selectedValue,
+                                 items,
+                                 null, /* units */
+                                 null, /* type */
+                                 regexp,
+                                 width,
+                                 null, /* abbrv */
+                                 new AccessMode(
                                          getAccessType(param),
                                          isEnabledOnlyInAdvancedMode(param)));
-            paramComboBoxAdd(param, prefix, paramCb);
-            paramCb.setAlwaysEditable(true);
+            widgetAdd(param, prefix, paramWi);
+            paramWi.setAlwaysEditable(true);
         } else {
-            paramCb = super.getParamComboBox(param, prefix, width);
+            paramWi = super.createWidget(param, prefix, width);
         }
-        return paramCb;
+        return paramWi;
     }
 
     /** Returns string representation of the filesystem service. */
-    @Override public String toString() {
+    @Override
+    public String toString() {
         String id = getService().getId();
         if (id == null) {
             return super.toString(); /* this is for 'new Filesystem' */
@@ -355,8 +355,9 @@ final class FilesystemInfo extends ServiceInfo {
     }
 
     /** Removes the service without confirmation dialog. */
-    @Override protected void removeMyselfNoConfirm(final Host dcHost,
-                                                   final boolean testOnly) {
+    @Override
+    protected void removeMyselfNoConfirm(final Host dcHost,
+                                         final boolean testOnly) {
         final DrbdVolumeInfo oldDvi =
                     getBrowser().getDrbdDevHash().get(
                                             getParamSaved(FS_RES_PARAM_DEV));
@@ -364,7 +365,8 @@ final class FilesystemInfo extends ServiceInfo {
         super.removeMyselfNoConfirm(dcHost, testOnly);
         if (oldDvi != null && !testOnly) {
             final Thread t = new Thread(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     oldDvi.updateMenus(null);
                 }
             });
@@ -376,8 +378,8 @@ final class FilesystemInfo extends ServiceInfo {
      * Adds DrbddiskInfo before the filesysteminfo is added, returns true
      * if something was added.
      */
-    @Override void addResourceBefore(final Host dcHost,
-                                     final boolean testOnly) {
+    @Override
+    void addResourceBefore(final Host dcHost, final boolean testOnly) {
         if (getGroupInfo() != null) {
             // TODO: disabled for now
             return;
@@ -410,14 +412,16 @@ final class FilesystemInfo extends ServiceInfo {
                 oldDvi.removeLinbitDrbd(this, dcHost, testOnly);
             }
             final Thread t = new Thread(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     oldDvi.updateMenus(null);
                 }
             });
             t.start();
             oldDvi.getDrbdResourceInfo().setUsedByCRM(null);
             //final Thread t = new Thread(new Runnable() {
-            //    @Override public void run() {
+            //    @Override
+            //    public void run() {
             //        oldDvi.updateMenus(null);
             //    }
             //});
@@ -430,7 +434,8 @@ final class FilesystemInfo extends ServiceInfo {
         if (newDvi != null) {
             //newDvi.getDrbdResourceInfo().setUsedByCRM(true);
             //final Thread t = new Thread(new Runnable() {
-            //    @Override public void run() {
+            //    @Override
+            //    public void run() {
             //        newDvi.updateMenus(null);
             //    }
             //});
@@ -444,9 +449,10 @@ final class FilesystemInfo extends ServiceInfo {
     }
 
     /** Returns how much of the filesystem is used. */
-    @Override public int getUsed() {
-        if (blockDeviceParamCb != null) {
-            final Object value = blockDeviceParamCb.getValue();
+    @Override
+    public int getUsed() {
+        if (blockDeviceParamWi != null) {
+            final Object value = blockDeviceParamWi.getValue();
             if (Tools.isStringClass(value)) {
                 // TODO:
                 return -1;
@@ -468,7 +474,8 @@ final class FilesystemInfo extends ServiceInfo {
     }
 
     /** Reload combo boxes. */
-    @Override public void reloadComboBoxes() {
+    @Override
+    public void reloadComboBoxes() {
         super.reloadComboBoxes();
         final DrbdVolumeInfo selectedInfo =
                           getBrowser().getDrbdDevHash().get(
@@ -489,9 +496,9 @@ final class FilesystemInfo extends ServiceInfo {
         }
         final Info[] commonBlockDevInfos = getCommonBlockDevInfos(defaultValue,
                                                                   getName());
-        if (blockDeviceParamCb != null) {
-            final String value = blockDeviceParamCb.getStringValue();
-            blockDeviceParamCb.reloadComboBox(value,
+        if (blockDeviceParamWi != null) {
+            final String value = blockDeviceParamWi.getStringValue();
+            blockDeviceParamWi.reloadComboBox(value,
                                               commonBlockDevInfos);
         }
     }

@@ -91,6 +91,8 @@ public final class SSH {
     /** Default timeout for SSH commands. */
     public static final int DEFAULT_COMMAND_TIMEOUT_LONG =
                                Tools.getDefaultInt("SSH.Command.Timeout.Long");
+    /** No timeout for SSH commands. */
+    public static final int NO_COMMAND_TIMEOUT = 0;
     /** Sudo prompt. */
     public static final String SUDO_PROMPT = "DRBD MC sudo pwd: ";
 
@@ -345,6 +347,7 @@ public final class SSH {
         */
         private SSHOutput execOneCommand(final String command,
                                          final boolean outputVisible) {
+            
             if (sshCommandTimeout > 0 && sshCommandTimeout < 2000) {
                 Tools.appWarning(sshCommandTimeout + " to small for timeout? "
                                  + command);
@@ -376,11 +379,7 @@ public final class SSH {
                    With pty, the sudo wouldn't work, because we don't want
                    to enter sudo password by every command.
                    (It would be exposed) */
-                if (command.indexOf("/etc/init.d/pacemaker start") < 0) {
-                    //TODO
-                    /* no pty workaround for pacemaker init script. */
-                    thisSession.requestPTY("dumb", 0, 0, 0, 0, null);
-                }
+                thisSession.requestPTY("dumb", 0, 0, 0, 0, null);
                 Tools.debug(this, "exec command: "
                                   + host.getName()
                                   + ": "
@@ -389,7 +388,8 @@ public final class SSH {
                                                true),
                                   2);
                 thisSession.execCommand("bash -c '"
-                                        + Tools.escapeSingleQuotes("export LC_ALL=C;"
+                                        + Tools.escapeSingleQuotes(
+                                                            "export LC_ALL=C;"
                                         + host.getSudoCommand(
                                                host.getHoppedCommand(command),
                                                false), 1) + "'");
@@ -426,7 +426,11 @@ public final class SSH {
 
                         if ((conditions & ChannelCondition.TIMEOUT) != 0) {
                                 /* A timeout occured. */
-                                Tools.info("SSH timeout: " + command);
+                                Tools.appWarning("SSH timeout: " + command);
+                                Tools.progressIndicatorFailed(
+                                   host.getName(),
+                                   "SSH timeout: "
+                                   + command.replaceAll(DistResource.SUDO, ""));
                                 throw new IOException(
                                   "Timeout while waiting for data from peer.");
                         }
@@ -512,6 +516,11 @@ public final class SSH {
                     res.append(errOutput);
 
                     if (newOutputCallback != null && !cancelIt) {
+                        Tools.debug(this, "output" + exitCode + ": "
+                                          + host.getName()
+                                          + ": "
+                                          + output.toString(),
+                                          2);
                         newOutputCallback.output(output.toString());
                     }
 
@@ -537,6 +546,8 @@ public final class SSH {
                 thisSession.close();
                 sess = null;
             } catch (IOException e) {
+                Tools.appWarning(host.getName() + ":" + e.getMessage()
+                               + ":"  + command);
                 exitCode = ERROR_EXIT_CODE;
             }
             final String outputString = res.toString();
@@ -544,7 +555,7 @@ public final class SSH {
                               + host.getName()
                               + ": "
                               + outputString,
-                              3);
+                              2);
             return new SSHOutput(outputString, exitCode);
         }
 
@@ -570,6 +581,7 @@ public final class SSH {
         throws java.io.IOException {
             super();
             this.command = command;
+            Tools.debug(this, "command: " + command, 1);
             this.execCallback = execCallback;
             this.newOutputCallback = newOutputCallback;
             this.outputVisible = outputVisible;
@@ -593,7 +605,8 @@ public final class SSH {
          * Reconnects, connects if there is no connection and executes a
          * command.
          */
-        @Override public void run() {
+        @Override
+        public void run() {
             if (reconnect()) {
                 mConnectionLock.lock();
                 if (connection == null) {
@@ -619,8 +632,9 @@ public final class SSH {
                 final Boolean[] cancelTimeout = new Boolean[1];
                 cancelTimeout[0] = false;
                 final Thread tt = new Thread(new Runnable() {
-                    @Override public void run() {
-                        Tools.sleep(10000);
+                    @Override
+                    public void run() {
+                        Tools.sleep(Tools.getDefaultInt("SSH.ConnectTimeout"));
                         if (!cancelTimeout[0]) {
                             Tools.debug(this,
                                         host.getName()
@@ -702,13 +716,14 @@ public final class SSH {
             execCommandThread = new ExecCommandThread(
                             command,
                             new ExecCallback() {
-                                @Override public void done(final String ans) {
+                                @Override
+                                public void done(final String ans) {
                                     answer[0] = ans;
                                     exitCode[0] = 0;
                                 }
-                                @Override public void doneError(
-                                                            final String ans,
-                                                            final int ec) {
+                                @Override
+                                public void doneError(final String ans,
+                                                      final int ec) {
                                     answer[0] = ans;
                                     exitCode[0] = ec;
                                 }
@@ -1077,7 +1092,8 @@ public final class SSH {
         }
 
         /** Start connection in the thread. */
-        @Override public void run() {
+        @Override
+        public void run() {
             if (callback != null && isConnected()) {
                 callback.done(1);
             }
@@ -1149,63 +1165,6 @@ public final class SSH {
                                 if (lastDSAKey != null) {
                                     key = lastDSAKey;
                                 }
-                                /* try first passwordless authentication.  */
-                                if (lastRSAKey == null && dsaKey.exists()) {
-                                    try {
-                                        res = conn.authenticateWithPublicKey(
-                                                                      username,
-                                                                      dsaKey,
-                                                                      key);
-                                    } catch (Exception e) {
-                                        lastDSAKey = null;
-                                        Tools.debug(this,
-                                                    "dsa passwordless failed");
-                                    }
-                                    if (res) {
-                                        Tools.debug(
-                                           this,
-                                           "dsa passwordless auth successful");
-                                        lastDSAKey = key;
-                                        lastRSAKey = null;
-                                        lastPassword = null;
-                                        break;
-                                    }
-
-                                    conn.close();
-                                    conn.connect(new AdvancedVerifier(),
-                                                 connectTimeout,
-                                                 kexTimeout);
-                                }
-
-
-                                if (rsaKey.exists()) {
-                                    try {
-                                        res =
-                                           conn.authenticateWithPublicKey(
-                                                                      username,
-                                                                      rsaKey,
-                                                                      key);
-                                    } catch (Exception e) {
-                                        lastRSAKey = null;
-                                        Tools.debug(this,
-                                                    "rsa passwordless failed");
-                                    }
-                                    if (res) {
-                                        Tools.debug(
-                                           this,
-                                           "rsa passwordless auth successful");
-                                        lastRSAKey = key;
-                                        lastDSAKey = null;
-                                        lastPassword = null;
-                                        break;
-                                    }
-
-                                    conn.close();
-                                    conn.connect(new AdvancedVerifier(),
-                                                 connectTimeout,
-                                                 kexTimeout);
-                                }
-
                                 key = sshGui.enterSomethingDialog(
                                         Tools.getString(
                                                  "SSH.RSA.DSA.Authentication"),
@@ -1420,7 +1379,8 @@ public final class SSH {
                     mConnectionLock.unlock();
                     host.setConnected();
                     SwingUtilities.invokeLater(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             host.getTerminalPanel().nextCommand();
                         }
                     });
@@ -1629,10 +1589,12 @@ public final class SSH {
                                 + commandTail, 1)
                             + "\"",
                             new ExecCallback() {
-                                @Override public void done(final String ans) {
+                                @Override
+                                public void done(final String ans) {
                                     /* ok */
                                 }
-                                @Override public void doneError(
+                                @Override
+                                public void doneError(
                                                          final String ans,
                                                          final int exitCode) {
                                     if (ans == null) {
@@ -1646,7 +1608,8 @@ public final class SSH {
                                         }
                                         final Thread t = new Thread(
                                         new Runnable() {
-                                            @Override public void run() {
+                                            @Override
+                                            public void run() {
                                                 Tools.progressIndicatorFailed(
                                                                 host.getName(),
                                                                 line,

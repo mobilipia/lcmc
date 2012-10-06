@@ -29,7 +29,7 @@ import lcmc.utilities.Tools;
 import lcmc.utilities.ExecCallback;
 import lcmc.utilities.SSH.ExecCommandThread;
 import lcmc.utilities.SSH;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.gui.dialog.WizardDialog;
 import lcmc.gui.SpringUtilities;
 
@@ -54,7 +54,7 @@ final class CommStack extends DialogCluster {
     /** Serial Version UID. */
     private static final long serialVersionUID = 1L;
     /** Radio Combo box. */
-    private GuiComboBox chooseStackCombo;
+    private Widget chooseStackCombo;
 
     /** Prepares a new <code>CommStack</code> object. */
     CommStack(final WizardDialog previousDialog, final Cluster cluster) {
@@ -62,7 +62,8 @@ final class CommStack extends DialogCluster {
     }
 
     /** Returns the next dialog. */
-    @Override public WizardDialog nextDialog() {
+    @Override
+    public WizardDialog nextDialog() {
         if (ConfigData.HEARTBEAT_NAME.equals(chooseStackCombo.getValue())) {
             Tools.getConfigData().setLastInstalledClusterStack(
                                                     ConfigData.HEARTBEAT_NAME);
@@ -75,23 +76,27 @@ final class CommStack extends DialogCluster {
     }
 
     /** Returns the title of the dialog. */
-    @Override protected String getClusterDialogTitle() {
+    @Override
+    protected String getClusterDialogTitle() {
         return Tools.getString("Dialog.Cluster.CommStack.Title");
     }
 
     /** Returns the description of the dialog. */
-    @Override protected String getDescription() {
+    @Override
+    protected String getDescription() {
         return Tools.getString("Dialog.Cluster.CommStack.Description");
     }
 
     /** Inits the dialog. */
-    @Override protected void initDialog() {
+    @Override
+    protected void initDialog() {
         super.initDialog();
         enableComponentsLater(new JComponent[]{});
     }
 
     /** Inits dialog after it becomes visible. */
-    @Override protected void initDialogAfterVisible() {
+    @Override
+    protected void initDialogAfterVisible() {
         final Host[] hosts = getCluster().getHostsArray();
         final ExecCommandThread[] infoThreads =
                                         new ExecCommandThread[hosts.length];
@@ -102,16 +107,17 @@ final class CommStack extends DialogCluster {
                              "Cluster.Init.getInstallationInfo",
                              getProgressBar(),
                              new ExecCallback() {
-                                 @Override public void done(final String ans) {
+                                 @Override
+                                 public void done(final String ans) {
                                      //drbdLoaded[index] = true;
                                      for (final String line
                                                     : ans.split("\\r?\\n")) {
                                          host.parseInstallationInfo(line);
                                      }
                                  }
-                                 @Override public void doneError(
-                                                        final String ans,
-                                                        final int exitCode) {
+                                 @Override
+                                 public void doneError(final String ans,
+                                                       final int exitCode) {
                                      Tools.appWarning(
                                                 "could not get install info");
                                  }
@@ -148,7 +154,8 @@ final class CommStack extends DialogCluster {
         final boolean hb = hbIsPossible;
         if (ais || hb) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     if (ais) {
                         chooseStackCombo.setEnabled(ConfigData.COROSYNC_NAME,
                                                     true);
@@ -163,7 +170,8 @@ final class CommStack extends DialogCluster {
         enableComponents();
         if (ais || hb) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     buttonClass(nextButton()).setEnabled(true);
                     makeDefaultAndRequestFocus(buttonClass(nextButton()));
                 }
@@ -177,7 +185,8 @@ final class CommStack extends DialogCluster {
 
 
     /** Returns the panel with radio boxes. */
-    @Override protected JComponent getInputPane() {
+    @Override
+    protected JComponent getInputPane() {
         final JPanel inputPane = new JPanel(new SpringLayout());
         final Host[] hosts = getCluster().getHostsArray();
         boolean hbImpossible = false;
@@ -227,18 +236,18 @@ final class CommStack extends DialogCluster {
         if (defaultValue == null) {
             defaultValue = ConfigData.COROSYNC_NAME;
         }
-        chooseStackCombo = new GuiComboBox(defaultValue,
-                                           new String[]{
-                                                    ConfigData.HEARTBEAT_NAME,
-                                                    ConfigData.COROSYNC_NAME},
-                                           null, /* units */
-                                           GuiComboBox.Type.RADIOGROUP,
-                                           null, /* regexp */
-                                           500,
-                                           null, /* abbrv */
-                                           new AccessMode(
-                                                  ConfigData.AccessType.ADMIN,
-                                                  false)); /* only adv. mode */
+        chooseStackCombo = new Widget(defaultValue,
+                                      new String[]{
+                                               ConfigData.HEARTBEAT_NAME,
+                                               ConfigData.COROSYNC_NAME},
+                                      null, /* units */
+                                      Widget.Type.RADIOGROUP,
+                                      null, /* regexp */
+                                      500,
+                                      null, /* abbrv */
+                                      new AccessMode(
+                                             ConfigData.AccessType.ADMIN,
+                                             false)); /* only adv. mode */
         chooseStackCombo.setEnabled(ConfigData.COROSYNC_NAME, false);
         chooseStackCombo.setEnabled(ConfigData.HEARTBEAT_NAME, false);
         chooseStackCombo.setBackgroundColor(Color.WHITE);
@@ -256,7 +265,8 @@ final class CommStack extends DialogCluster {
     }
 
     /** Enable skip button. */
-    @Override protected boolean skipButtonEnabled() {
+    @Override
+    protected boolean skipButtonEnabled() {
         return true;
     }
 }

@@ -23,7 +23,7 @@ package lcmc.gui.resources;
 
 import lcmc.gui.Browser;
 import lcmc.gui.ClusterBrowser;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.data.ResourceAgent;
 import lcmc.data.Host;
 import lcmc.data.CRMXML;
@@ -78,7 +78,8 @@ public final class GroupInfo extends ServiceInfo {
         final String[] params = getParametersFromXML();
         if (!testOnly) {
             Tools.invokeAndWait(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     getApplyButton().setEnabled(false);
                 }
             });
@@ -201,10 +202,12 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Applies the changes to the group parameters. */
-    @Override void apply(final Host dcHost, final boolean testOnly) {
+    @Override
+    void apply(final Host dcHost, final boolean testOnly) {
         if (!testOnly) {
             Tools.invokeAndWait(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     getApplyButton().setEnabled(false);
                     getRevertButton().setEnabled(false);
                 }
@@ -215,9 +218,10 @@ public final class GroupInfo extends ServiceInfo {
         final String[] params = getParametersFromXML();
         if (!testOnly) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     getApplyButton().setToolTipText(null);
-                    final GuiComboBox idField = paramComboBoxGet(GUI_ID, null);
+                    final Widget idField = getWidget(GUI_ID, null);
                     idField.setEnabled(false);
                 }
             });
@@ -418,7 +422,7 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Adds service to this group and creates new service info object. */
-    void addGroupServicePanel(final ResourceAgent newRA,
+    ServiceInfo addGroupServicePanel(final ResourceAgent newRA,
                               final boolean reloadNode) {
         ServiceInfo newServiceInfo;
 
@@ -435,11 +439,12 @@ public final class GroupInfo extends ServiceInfo {
             newServiceInfo = new VirtualDomainInfo(name, newRA, getBrowser());
         } else if (newRA.isGroup()) {
             Tools.appError("No groups in group allowed");
-            return;
+            return null;
         } else {
             newServiceInfo = new ServiceInfo(name, newRA, getBrowser());
         }
         addGroupServicePanel(newServiceInfo, reloadNode);
+        return newServiceInfo;
     }
 
     /**
@@ -447,7 +452,8 @@ public final class GroupInfo extends ServiceInfo {
      * all the services are running. Null if they running on different
      * nodes or not at all.
      */
-    @Override List<String> getRunningOnNodes(final boolean testOnly) {
+    @Override
+    List<String> getRunningOnNodes(final boolean testOnly) {
         final ClusterStatus cs = getBrowser().getClusterStatus();
         final List<String> resources = cs.getGroupResources(
                                                       getHeartbeatId(testOnly),
@@ -470,7 +476,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Returns node name of the host where this service is running. */
-    @Override List<String> getMasterOnNodes(final boolean testOnly) {
+    @Override
+    List<String> getMasterOnNodes(final boolean testOnly) {
         final ClusterStatus cs = getBrowser().getClusterStatus();
         final List<String> resources = cs.getGroupResources(
                                                       getHeartbeatId(testOnly),
@@ -493,8 +500,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Starts all resources in the group. */
-    @Override void startResource(final Host dcHost,
-                                 final boolean testOnly) {
+    @Override
+    void startResource(final Host dcHost, final boolean testOnly) {
         if (!testOnly) {
             setUpdated(true);
         }
@@ -510,8 +517,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Stops all resources in the group. */
-    @Override void stopResource(final Host dcHost,
-                                final boolean testOnly) {
+    @Override
+    void stopResource(final Host dcHost, final boolean testOnly) {
         if (!testOnly) {
             setUpdated(true);
         }
@@ -527,8 +534,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Cleans up all resources in the group. */
-    @Override void cleanupResource(final Host dcHost,
-                                   final boolean testOnly) {
+    @Override
+    void cleanupResource(final Host dcHost, final boolean testOnly) {
         if (!testOnly) {
             setUpdated(true);
         }
@@ -549,9 +556,10 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Sets whether the group services are managed. */
-    @Override void setManaged(final boolean isManaged,
-                              final Host dcHost,
-                              final boolean testOnly) {
+    @Override
+    void setManaged(final boolean isManaged,
+                    final Host dcHost,
+                    final boolean testOnly) {
         if (!testOnly) {
             setUpdated(true);
         }
@@ -567,7 +575,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Returns items for the group popup. */
-    @Override public List<UpdatableItem> createPopup() {
+    @Override
+    public List<UpdatableItem> createPopup() {
         final boolean testOnly = false;
         final GroupInfo thisGroupInfo = this;
         /* add group service */
@@ -578,7 +587,8 @@ public final class GroupInfo extends ServiceInfo {
             private static final long serialVersionUID = 1L;
             private final Lock mUpdateLock = new ReentrantLock();
 
-            @Override public String enablePredicate() {
+            @Override
+            public String enablePredicate() {
                 if (getBrowser().clStatusFailed()) {
                     return ClusterBrowser.UNKNOWN_CLUSTER_STATUS_STRING;
                 } else {
@@ -586,9 +596,11 @@ public final class GroupInfo extends ServiceInfo {
                 }
             }
 
-            @Override public void update() {
+            @Override
+            public void update() {
                 final Thread t = new Thread(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         if (mUpdateLock.tryLock()) {
                             try {
                                 updateThread();
@@ -603,12 +615,14 @@ public final class GroupInfo extends ServiceInfo {
 
             private void updateThread() {
                 SwingUtilities.invokeLater(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         setEnabled(false);
                     }
                 });
                 Tools.invokeAndWait(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         removeAll();
                     }
                 });
@@ -632,7 +646,8 @@ public final class GroupInfo extends ServiceInfo {
                                    new AccessMode(ConfigData.AccessType.OP,
                                                   false)) {
                             private static final long serialVersionUID = 1L;
-                            @Override public void action() {
+                            @Override
+                            public void action() {
                                 final CloneInfo ci = getCloneInfo();
                                 if (ci != null) {
                                     ci.hidePopup();
@@ -665,7 +680,8 @@ public final class GroupInfo extends ServiceInfo {
                         classItem.setEnabled(false);
                     }
                     SwingUtilities.invokeLater(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             add(classItem);
                         }
                     });
@@ -699,13 +715,16 @@ public final class GroupInfo extends ServiceInfo {
                     private static final long serialVersionUID = 1L;
                     private final Lock mUpdateLock = new ReentrantLock();
 
-                    @Override public String enablePredicate() {
+                    @Override
+                    public String enablePredicate() {
                         return null;
                     }
 
-                    @Override public void update() {
+                    @Override
+                    public void update() {
                         final Thread t = new Thread(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 if (mUpdateLock.tryLock()) {
                                     try {
                                         updateThread();
@@ -720,12 +739,14 @@ public final class GroupInfo extends ServiceInfo {
 
                     public void updateThread() {
                         SwingUtilities.invokeLater(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 setEnabled(false);
                             }
                         });
                         Tools.invokeAndWait(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 removeAll();
                             }
                         });
@@ -736,7 +757,8 @@ public final class GroupInfo extends ServiceInfo {
                             u.update();
                         }
                         SwingUtilities.invokeLater(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 for (final UpdatableItem u
                                                      : serviceMenus) {
                                     add((JMenuItem) u);
@@ -753,7 +775,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Removes this group from the cib. */
-    @Override public void removeMyself(final boolean testOnly) {
+    @Override
+    public void removeMyself(final boolean testOnly) {
         if (getService().isNew()) {
             removeMyselfNoConfirm(getBrowser().getDCHost(), testOnly);
             getService().setNew(false);
@@ -803,8 +826,9 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Remove all the services in the group and the group. */
-    @Override public void removeMyselfNoConfirm(final Host dcHost,
-                                                final boolean testOnly) {
+    @Override
+    public void removeMyselfNoConfirm(final Host dcHost,
+                                      final boolean testOnly) {
         final List<ServiceInfo> children = new ArrayList<ServiceInfo>();
         if (!testOnly) {
             final Enumeration e = getNode().children();
@@ -869,7 +893,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Returns tool tip for the group vertex. */
-    @Override public String getToolTipText(final boolean testOnly) {
+    @Override
+    public String getToolTipText(final boolean testOnly) {
         final List<String> hostNames = getRunningOnNodes(testOnly);
         final StringBuilder sb = new StringBuilder(220);
         sb.append("<b>");
@@ -904,7 +929,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Returns whether one of the services on one of the hosts failed. */
-    @Override boolean isOneFailed(final boolean testOnly) {
+    @Override
+    boolean isOneFailed(final boolean testOnly) {
         final ClusterStatus cs = getBrowser().getClusterStatus();
         final List<String> resources = cs.getGroupResources(
                                                      getHeartbeatId(testOnly),
@@ -922,7 +948,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Returns whether one of the services on one of the hosts failed. */
-    @Override boolean isOneFailedCount(final boolean testOnly) {
+    @Override
+    boolean isOneFailedCount(final boolean testOnly) {
         final ClusterStatus cs = getBrowser().getClusterStatus();
         final List<String> resources = cs.getGroupResources(
                                                      getHeartbeatId(testOnly),
@@ -940,7 +967,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Returns whether one of the services failed to start. */
-    @Override public boolean isFailed(final boolean testOnly) {
+    @Override
+    public boolean isFailed(final boolean testOnly) {
         final ClusterStatus cs = getBrowser().getClusterStatus();
         final List<String> resources = cs.getGroupResources(
                                                       getHeartbeatId(testOnly),
@@ -961,7 +989,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Returns subtexts that appears in the service vertex. */
-    @Override public Subtext[] getSubtextsForGraph(final boolean testOnly) {
+    @Override
+    public Subtext[] getSubtextsForGraph(final boolean testOnly) {
         final List<Subtext> texts = new ArrayList<Subtext>();
         Subtext prevSubtext = null;
         final Host dcHost = getBrowser().getDCHost();
@@ -1067,7 +1096,8 @@ public final class GroupInfo extends ServiceInfo {
     /**
      * Returns from which hosts the services or the whole group was migrated.
      */
-    @Override public List<Host> getMigratedFrom(final boolean testOnly) {
+    @Override
+    public List<Host> getMigratedFrom(final boolean testOnly) {
         final ClusterStatus cs = getBrowser().getClusterStatus();
         final List<String> resources = cs.getGroupResources(
                                                       getHeartbeatId(testOnly),
@@ -1097,7 +1127,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Returns whether at least one service is unmaneged. */
-    @Override public boolean isManaged(final boolean testOnly) {
+    @Override
+    public boolean isManaged(final boolean testOnly) {
         final ClusterStatus cs = getBrowser().getClusterStatus();
         final List<String> resources = cs.getGroupResources(
                                                       getHeartbeatId(testOnly),
@@ -1120,7 +1151,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Returns whether all of the services are started. */
-    @Override boolean isStarted(final boolean testOnly) {
+    @Override
+    boolean isStarted(final boolean testOnly) {
         final ClusterStatus cs = getBrowser().getClusterStatus();
         final List<String> resources = cs.getGroupResources(
                                                       getHeartbeatId(testOnly),
@@ -1138,7 +1170,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Returns whether one of the services is stopped. */
-    @Override public boolean isStopped(final boolean testOnly) {
+    @Override
+    public boolean isStopped(final boolean testOnly) {
         final ClusterStatus cs = getBrowser().getClusterStatus();
         final List<String> resources = cs.getGroupResources(
                                                       getHeartbeatId(testOnly),
@@ -1156,7 +1189,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Returns whether the group is stopped. */
-    @Override boolean isGroupStopped(final boolean testOnly) {
+    @Override
+    boolean isGroupStopped(final boolean testOnly) {
         return super.isStopped(testOnly);
     }
 
@@ -1179,7 +1213,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Returns true if all services in the group are running. */
-    @Override public boolean isRunning(final boolean testOnly) {
+    @Override
+    public boolean isRunning(final boolean testOnly) {
         final ClusterStatus cs = getBrowser().getClusterStatus();
         final List<String> resources = cs.getGroupResources(
                                                       getHeartbeatId(testOnly),
@@ -1201,8 +1236,9 @@ public final class GroupInfo extends ServiceInfo {
      * have changed. If group does not have any services, its changes
      * cannot by applied.
      */
-    @Override public boolean checkResourceFieldsChanged(final String param,
-                                                        final String[] params) {
+    @Override
+    public boolean checkResourceFieldsChanged(final String param,
+                                              final String[] params) {
         return checkResourceFieldsChanged(param, params, false, false);
     }
 
@@ -1255,8 +1291,9 @@ public final class GroupInfo extends ServiceInfo {
      * parameters will be checked only in the cache. This is good if only
      * one value is changed and we don't want to check everything.
      */
-    @Override public boolean checkResourceFieldsCorrect(final String param,
-                                                        final String[] params) {
+    @Override
+    public boolean checkResourceFieldsCorrect(final String param,
+                                              final String[] params) {
         return checkResourceFieldsCorrect(param, params, false, false);
     }
 
@@ -1303,7 +1340,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Update menus with positions and calles their update methods. */
-    @Override void updateMenus(final Point2D pos) {
+    @Override
+    void updateMenus(final Point2D pos) {
         super.updateMenus(pos);
         final ClusterStatus cs = getBrowser().getClusterStatus();
         final List<String> resources = cs.getGroupResources(
@@ -1321,7 +1359,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Adds existing service menu item for every member of a group. */
-    @Override protected void addExistingGroupServiceMenuItems(
+    @Override
+    protected void addExistingGroupServiceMenuItems(
                         final ServiceInfo asi,
                         final MyListModel dlm,
                         final Map<MyMenuItem, ButtonCallback> callbackHash,
@@ -1354,7 +1393,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Returns the icon for the category. */
-    @Override public ImageIcon getCategoryIcon(final boolean testOnly) {
+    @Override
+    public ImageIcon getCategoryIcon(final boolean testOnly) {
         if (getBrowser().allHostsDown() || !isOneRunning(testOnly)) {
             return ServiceInfo.SERVICE_STOPPED_ICON_SMALL;
         }
@@ -1362,7 +1402,8 @@ public final class GroupInfo extends ServiceInfo {
     }
 
     /** Revert all values. */
-    @Override public void revert() {
+    @Override
+    public void revert() {
         super.revert();
         final Enumeration e = getNode().children();
         try {

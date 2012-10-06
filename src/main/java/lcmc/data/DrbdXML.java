@@ -44,6 +44,8 @@ import java.util.regex.Matcher;
 
 import java.math.BigInteger;
 import org.apache.commons.collections15.map.MultiKeyMap;
+import org.apache.commons.collections15.map.LinkedMap;
+import org.apache.commons.collections15.keyvalue.MultiKey;
 
 /**
  * This class parses xml from drbdsetup and drbdadm, stores the
@@ -113,7 +115,7 @@ public final class DrbdXML extends XML {
     private final List<String> resourceList = new ArrayList<String>();
     /** Map from drbd resource name to the drbd device. */
     private final MultiKeyMap<String, String> resourceDeviceMap =
-                                  new MultiKeyMap<String, String>();
+             MultiKeyMap.decorate(new LinkedMap<MultiKey<String>, String>());
     /** Map from drbd device to the drbd resource name. */
     private final Map<String, String> deviceResourceMap =
                                                 new HashMap<String, String>();
@@ -141,6 +143,10 @@ public final class DrbdXML extends XML {
     /** Map from host to the boolean value if drbd is loaded on this host. */
     private final Map<String, Boolean> hostDrbdLoadedMap =
                                                 new HashMap<String, Boolean>();
+    /** Whether there are unknown sections in the config. */
+    boolean unknownSections = false;
+    /** Whether there is proxy in the config. */
+    boolean proxyDetected = false;
     /** Global section. */
     public static final String GLOBAL_SECTION = "global";
     /** DRBD protocol C, that is a default. */
@@ -278,7 +284,9 @@ public final class DrbdXML extends XML {
                                                 false,  /* outputVisible */
                                                 SSH.DEFAULT_COMMAND_TIMEOUT);
         if (ret.getExitCode() == 0) {
-            return ret.getOutput();
+            final StringBuffer confSB = new StringBuffer(ret.getOutput());
+            final String conf = host.getOutput("drbd", confSB);
+            return conf;
         }
         return null;
     }
@@ -885,6 +893,13 @@ public final class DrbdXML extends XML {
                     resourceHostPortMap.put(resName, hostPortMap);
                 }
                 hostPortMap.put(hostName, port);
+            } else if (option.getNodeName().equals("proxy")) {
+                if (!proxyDetected) {
+                    Tools.appWarning("unsuported feature: proxy");
+                    Tools.progressIndicatorFailed(hostName,
+                                                  "unsupported feature: proxy");
+                    proxyDetected = true;
+                }
             }
         }
     }
@@ -982,6 +997,16 @@ public final class DrbdXML extends XML {
 
                 parseConfigSectionNode(n, nameValueMap);
                 optionsMap.put(resName + "." + secName, nameValueMap);
+                if (!sectionParamsMap.containsKey(secName)
+                    && !sectionParamsMap.containsKey(secName + "-options")) {
+                    Tools.appWarning("DRBD: unknown section: " + secName);
+                    if (!unknownSections) {
+                        /* unknown section, so it's not removed. */
+                        Tools.progressIndicatorFailed(
+                                          "DRBD: unknown section: " + secName);
+                        unknownSections = true;
+                    }
+                }
             }
         }
     }
@@ -1285,5 +1310,14 @@ public final class DrbdXML extends XML {
         resourceDeviceMap.remove(res, volumeNr);
         deviceResourceMap.remove(dev);
         deviceVolumeMap.remove(dev);
+    }
+
+    /**
+     * Whether drbd is disabled. If there are unknown sections, that we don't
+     * want to overwrite.
+     */
+    public boolean isDrbdDisabled() {
+        return (unknownSections || proxyDetected)
+               && !Tools.getConfigData().isAdvancedMode();
     }
 }

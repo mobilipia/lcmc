@@ -29,7 +29,8 @@ import java.util.Arrays;
 public final class DistResource_suse extends java.util.ListResourceBundle {
 
     /** Get contents. */
-    @Override protected Object[][] getContents() {
+    @Override
+    protected Object[][] getContents() {
         return Arrays.copyOf(contents, contents.length);
     }
 
@@ -156,5 +157,8 @@ public final class DistResource_suse extends java.util.ListResourceBundle {
          + " fi && "
          + "make && make install DESTDIR=/ && "
          + "/bin/rm -rf /tmp/drbdinst"},
+
+        {"libvirt.lxc.libpath.x86_64", "/usr/lib64/libvirt"},
+        {"libvirt.xen.libpath", "/usr/lib/xen"},
     };
 }

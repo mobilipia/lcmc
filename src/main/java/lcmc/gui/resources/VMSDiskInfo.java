@@ -22,7 +22,7 @@
 package lcmc.gui.resources;
 
 import lcmc.gui.Browser;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.data.VMSXML;
 import lcmc.data.VMSXML.DiskData;
 import lcmc.data.Host;
@@ -53,24 +53,24 @@ import org.w3c.dom.Node;
  */
 public final class VMSDiskInfo extends VMSHardwareInfo {
     /** Source file combo box, so that it can be disabled, depending on type. */
-    private final Map<String, GuiComboBox> sourceFileCB =
-                                            new HashMap<String, GuiComboBox>();
+    private final Map<String, Widget> sourceFileWi =
+                                            new HashMap<String, Widget>();
     /** Source block combo box, so that it can be disabled, depending on type.*/
-    private final Map<String, GuiComboBox> sourceDeviceCB =
-                                            new HashMap<String, GuiComboBox>();
+    private final Map<String, Widget> sourceDeviceWi =
+                                            new HashMap<String, Widget>();
     /** Target device combo box, that needs to be reloaded if target type has
      * changed. */
-    private final Map<String, GuiComboBox> targetDeviceCB =
-                                            new HashMap<String, GuiComboBox>();
+    private final Map<String, Widget> targetDeviceWi =
+                                            new HashMap<String, Widget>();
     /** Driver name combo box. */
-    private final Map<String, GuiComboBox> driverNameCB =
-                                            new HashMap<String, GuiComboBox>();
+    private final Map<String, Widget> driverNameWi =
+                                            new HashMap<String, Widget>();
     /** Driver type combo box. */
-    private final Map<String, GuiComboBox> driverTypeCB =
-                                            new HashMap<String, GuiComboBox>();
+    private final Map<String, Widget> driverTypeWi =
+                                            new HashMap<String, Widget>();
     /** Readonly combo box. */
-    private final Map<String, GuiComboBox> readonlyCB =
-                                            new HashMap<String, GuiComboBox>();
+    private final Map<String, Widget> readonlyWi =
+                                            new HashMap<String, Widget>();
     /** Previous target bus value. */
     private String prevTargetBus = null;
     /** Parameters. */
@@ -111,22 +111,17 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
     private static final Set<String> IS_REQUIRED =
         new HashSet<String>(Arrays.asList(new String[]{DiskData.TYPE}));
     /** Field type. */
-    private static final Map<String, GuiComboBox.Type> FIELD_TYPES =
-                                       new HashMap<String, GuiComboBox.Type>();
+    private static final Map<String, Widget.Type> FIELD_TYPES =
+                                       new HashMap<String, Widget.Type>();
     /** Target devices depending on the target type. */
     private static final Map<String, String[]> TARGET_DEVICES_MAP =
                                            new HashMap<String, String[]>();
     static {
-        FIELD_TYPES.put(DiskData.TYPE,
-                        GuiComboBox.Type.RADIOGROUP);
-        FIELD_TYPES.put(DiskData.SOURCE_FILE,
-                        GuiComboBox.Type.COMBOBOX);
-        FIELD_TYPES.put(DiskData.READONLY,
-                        GuiComboBox.Type.CHECKBOX);
-        FIELD_TYPES.put(DiskData.SHAREABLE,
-                        GuiComboBox.Type.CHECKBOX);
-        FIELD_TYPES.put(DiskData.TARGET_DEVICE,
-                        GuiComboBox.Type.COMBOBOX);
+        FIELD_TYPES.put(DiskData.TYPE, Widget.Type.RADIOGROUP);
+        FIELD_TYPES.put(DiskData.SOURCE_FILE, Widget.Type.COMBOBOX);
+        FIELD_TYPES.put(DiskData.READONLY, Widget.Type.CHECKBOX);
+        FIELD_TYPES.put(DiskData.SHAREABLE, Widget.Type.CHECKBOX);
+        FIELD_TYPES.put(DiskData.TARGET_DEVICE, Widget.Type.COMBOBOX);
     }
     /** Short name. */
     private static final Map<String, String> SHORTNAME_MAP =
@@ -159,12 +154,21 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
      * representation that appears in the menus. */
     private static final Map<String, String> TARGET_BUS_TYPES =
                                                  new HashMap<String, String>();
+    /** Disk types. */
+    private static final String FILE_TYPE = "file";
+    private static final String BLOCK_TYPE = "block";
+
+    /** Drivers. */
+    private static final String DRIVER_NAME_DEFUALT = null;
+    private static final String DRIVER_NAME_FILE = "file";
+    private static final String DRIVER_NAME_QEMU = "qemu";
+    private static final String DRIVER_NAME_PHY = "phy";
     static {
         POSSIBLE_VALUES.put(DiskData.TYPE,
                             new StringInfo[]{
-                                 new StringInfo("Image file", "file", null),
+                                 new StringInfo("Image file", FILE_TYPE, null),
                                  new StringInfo("Disk/block device",
-                                                "block",
+                                                BLOCK_TYPE,
                                                 null)});
         POSSIBLE_VALUES.put(
                     DiskData.TARGET_BUS_TYPE,
@@ -175,10 +179,11 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
                        new StringInfo("SCSI Disk",   "scsi/disk",   null),
                        new StringInfo("USB Disk",    "usb/disk",    null),
                        new StringInfo("Virtio Disk", "virtio/disk", null)});
-        POSSIBLE_VALUES.put(DiskData.DRIVER_NAME, new String[]{null,
-                                                               "qemu",
-                                                               "file",
-                                                               "phy"});
+        POSSIBLE_VALUES.put(DiskData.DRIVER_NAME, new String[]{
+                                                          DRIVER_NAME_DEFUALT,
+                                                          DRIVER_NAME_FILE,
+                                                          DRIVER_NAME_QEMU,
+                                                          DRIVER_NAME_PHY});
         POSSIBLE_VALUES.put(DiskData.DRIVER_TYPE, new String[]{null, "raw"});
         for (final StringInfo tbt : (StringInfo[]) POSSIBLE_VALUES.get(
                                                   DiskData.TARGET_BUS_TYPE)) {
@@ -186,7 +191,7 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
         }
         DEFAULTS_MAP.put(DiskData.READONLY, "False");
         DEFAULTS_MAP.put(DiskData.SHAREABLE, "False");
-        PREFERRED_MAP.put(DiskData.DRIVER_NAME, "qemu");
+        PREFERRED_MAP.put(DiskData.DRIVER_NAME, "file");
         TARGET_DEVICES_MAP.put("ide/disk",
                                new String[]{"hda", "hdb", "hdd"});
         TARGET_DEVICES_MAP.put("ide/cdrom",
@@ -210,13 +215,15 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
     }
 
     /** Adds disk table with only this disk to the main panel. */
-    @Override protected void addHardwareTable(final JPanel mainPanel) {
+    @Override
+    protected void addHardwareTable(final JPanel mainPanel) {
         tablePanel = getTablePanel("Disk",
                                    VMSVirtualDomainInfo.DISK_TABLE,
                                    getNewBtn(getVMSVirtualDomainInfo()));
         if (getResource().isNew()) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     tablePanel.setVisible(false);
                 }
             });
@@ -225,17 +232,20 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
     }
 
     /** Returns service icon in the menu. */
-    @Override public ImageIcon getMenuIcon(final boolean testOnly) {
+    @Override
+    public ImageIcon getMenuIcon(final boolean testOnly) {
         return BlockDevInfo.HARDDISK_ICON;
     }
 
     /** Returns long description of the specified parameter. */
-    @Override protected String getParamLongDesc(final String param) {
+    @Override
+    protected String getParamLongDesc(final String param) {
         return getParamShortDesc(param);
     }
 
     /** Returns short description of the specified parameter. */
-    @Override protected String getParamShortDesc(final String param) {
+    @Override
+    protected String getParamShortDesc(final String param) {
         final String name = SHORTNAME_MAP.get(param);
         if (name == null) {
             return param;
@@ -244,23 +254,34 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
     }
 
     /** Returns preferred value for specified parameter. */
-    @Override protected String getParamPreferred(final String param) {
+    @Override
+    protected String getParamPreferred(final String param) {
+        final String domainType =
+                        getVMSVirtualDomainInfo().getWidget(
+                            VMSXML.VM_PARAM_DOMAIN_TYPE, null).getStringValue();
+        if (DiskData.DRIVER_NAME.equals(param)
+            && VMSVirtualDomainInfo.DOMAIN_TYPE_KVM.equals(domainType)) {
+            return DRIVER_NAME_QEMU;
+        }
         return PREFERRED_MAP.get(param);
     }
 
     /** Returns default value for specified parameter. */
-    @Override protected String getParamDefault(final String param) {
+    @Override
+    protected String getParamDefault(final String param) {
         return DEFAULTS_MAP.get(param);
     }
 
     /** Returns parameters. */
-    @Override public String[] getParametersFromXML() {
+    @Override
+    public String[] getParametersFromXML() {
         return PARAMETERS.clone();
     }
 
     /** Returns real parameters. */
-    @Override public String[] getRealParametersFromXML() {
-        if ("block".equals(getComboBoxValue(DiskData.TYPE))) {
+    @Override
+    public String[] getRealParametersFromXML() {
+        if (BLOCK_TYPE.equals(getComboBoxValue(DiskData.TYPE))) {
             return BLOCK_PARAMETERS.clone();
         } else {
             return FILE_PARAMETERS.clone();
@@ -268,7 +289,8 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
     }
 
     /** Returns possible choices for drop down lists. */
-    @Override protected Object[] getParamPossibleChoices(final String param) {
+    @Override
+    protected Object[] getParamPossibleChoices(final String param) {
         if (DiskData.SOURCE_FILE.equals(param)) {
             final Set<String> sourceFileDirs = new TreeSet<String>();
             sourceFileDirs.add(LIBVIRT_IMAGE_LOCATION);
@@ -299,15 +321,18 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
     }
 
     /** Returns section to which the specified parameter belongs. */
-    @Override protected String getSection(final String param) {
+    @Override
+    protected String getSection(final String param) {
         return "Disk Options";
     }
 
     /** Returns true if the specified parameter is required. */
-    @Override protected boolean isRequired(final String param) {
+    @Override
+    protected boolean isRequired(final String param) {
         final String type = getComboBoxValue(DiskData.TYPE);
-        if ((DiskData.SOURCE_FILE.equals(param) && "file".equals(type))
-            || (DiskData.SOURCE_DEVICE.equals(param) && "block".equals(type))) {
+        if ((DiskData.SOURCE_FILE.equals(param) && FILE_TYPE.equals(type))
+            || (DiskData.SOURCE_DEVICE.equals(param)
+                && BLOCK_TYPE.equals(type))) {
             if ("ide/cdrom".equals(getComboBoxValue(DiskData.TARGET_BUS_TYPE))
                 || "fdc/floppy".equals(getComboBoxValue(
                                                  DiskData.TARGET_BUS_TYPE))) {
@@ -320,38 +345,44 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
     }
 
     /** Returns true if the specified parameter is integer. */
-    @Override protected boolean isInteger(final String param) {
+    @Override
+    protected boolean isInteger(final String param) {
         return false;
     }
 
     /** Returns true if the specified parameter is label. */
-    @Override protected boolean isLabel(final String param) {
+    @Override
+    protected boolean isLabel(final String param) {
         return false;
     }
 
     /** Returns true if the specified parameter is of time type. */
-    @Override protected boolean isTimeType(final String param) {
+    @Override
+    protected boolean isTimeType(final String param) {
         return false;
     }
 
     /** Returns whether parameter is checkbox. */
-    @Override protected boolean isCheckBox(final String param) {
+    @Override
+    protected boolean isCheckBox(final String param) {
         return false;
     }
 
     /** Returns the type of the parameter. */
-    @Override protected String getParamType(final String param) {
+    @Override
+    protected String getParamType(final String param) {
         return "undef"; // TODO:
     }
 
     /** Returns type of the field. */
-    @Override protected GuiComboBox.Type getFieldType(final String param) {
+    @Override
+    protected Widget.Type getFieldType(final String param) {
         return FIELD_TYPES.get(param);
     }
 
     /** Returns device parameters. */
-    @Override protected Map<String, String> getHWParameters(
-                                                   final boolean allParams) {
+    @Override
+    protected Map<String, String> getHWParameters(final boolean allParams) {
         Tools.invokeAndWait(new Runnable() {
             public void run() {
                 getInfoPanel();
@@ -401,12 +432,14 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
     }
 
     /** Applies the changes. */
-    @Override void apply(final boolean testOnly) {
+    @Override
+    void apply(final boolean testOnly) {
         if (testOnly) {
             return;
         }
         Tools.invokeAndWait(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 getApplyButton().setEnabled(false);
                 getRevertButton().setEnabled(false);
             }
@@ -423,16 +456,18 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
                                 getVMSVirtualDomainInfo().getDomainName();
                 final Node domainNode = vmsxml.getDomainNode(domainName);
                 modifyXML(vmsxml, domainNode, domainName, parameters);
-                vmsxml.saveAndDefine(domainNode, domainName);
+                final String virshOptions =
+                                   getVMSVirtualDomainInfo().getVirshOptions();
+                vmsxml.saveAndDefine(domainNode, domainName, virshOptions);
             }
         }
         getResource().setNew(false);
         getBrowser().reload(getNode(), false);
-        for (final Host h : getVMSVirtualDomainInfo().getDefinedOnHosts()) {
-            getBrowser().periodicalVMSUpdate(h);
-        }
+        getBrowser().periodicalVMSUpdate(
+                                getVMSVirtualDomainInfo().getDefinedOnHosts());
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 tablePanel.setVisible(true);
             }
         });
@@ -443,7 +478,8 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
     }
 
     /** Modify device xml. */
-    @Override protected void modifyXML(final VMSXML vmsxml,
+    @Override
+    protected void modifyXML(final VMSXML vmsxml,
                              final Node node,
                              final String domainName,
                              final Map<String, String> params) {
@@ -453,7 +489,8 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
     }
 
     /** Returns data for the table. */
-    @Override protected Object[][] getTableData(final String tableName) {
+    @Override
+    protected Object[][] getTableData(final String tableName) {
         if (VMSVirtualDomainInfo.HEADER_TABLE.equals(tableName)) {
             return getVMSVirtualDomainInfo().getMainTableData();
         } else if (VMSVirtualDomainInfo.DISK_TABLE.equals(tableName)) {
@@ -470,28 +507,30 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
     }
 
     /** Returns whether this parameter is advanced. */
-    @Override protected boolean isAdvanced(final String param) {
+    @Override
+    protected boolean isAdvanced(final String param) {
         return false;
     }
 
     /** Returns access type of this parameter. */
-    @Override protected ConfigData.AccessType getAccessType(
-                                                         final String param) {
+    @Override
+    protected ConfigData.AccessType getAccessType(final String param) {
         return ConfigData.AccessType.ADMIN;
     }
     /** Returns true if the value of the parameter is ok. */
-    @Override protected boolean checkParam(final String param,
-                                           final String newValue) {
+    @Override
+    protected boolean checkParam(final String param, final String newValue) {
         if (DiskData.TYPE.equals(param)) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
-                    for (final String p : sourceFileCB.keySet()) {
-                        sourceFileCB.get(p).setVisible(
-                                                "file".equals(newValue));
+                @Override
+                public void run() {
+                    for (final String p : sourceFileWi.keySet()) {
+                        sourceFileWi.get(p).setVisible(
+                                                FILE_TYPE.equals(newValue));
                     }
-                    for (final String p : sourceDeviceCB.keySet()) {
-                        sourceDeviceCB.get(p).setVisible(
-                                                "block".equals(newValue));
+                    for (final String p : sourceDeviceWi.keySet()) {
+                        sourceDeviceWi.get(p).setVisible(
+                                                BLOCK_TYPE.equals(newValue));
                     }
                 }
             });
@@ -522,10 +561,11 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
             if (prevTargetBus == null
                 || !prevTargetBus.equals(selected)) {
                 final String sel = selected;
-                for (final String p : targetDeviceCB.keySet()) {
+                for (final String p : targetDeviceWi.keySet()) {
                     //SwingUtilities.invokeLater(new Runnable() {
-                    //    @Override public void run() {
-                            targetDeviceCB.get(p).reloadComboBox(
+                    //    @Override
+                    //    public void run() {
+                            targetDeviceWi.get(p).reloadComboBox(
                                 sel,
                                 devices.toArray(new String[devices.size()]));
                     //    }
@@ -535,27 +575,27 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
             }
             if (getParamSaved(DiskData.DRIVER_NAME) == null) {
                 if ("ide/cdrom".equals(newValue)) {
-                    for (final String p : readonlyCB.keySet()) {
-                        readonlyCB.get(p).setValue("True");
+                    for (final String p : readonlyWi.keySet()) {
+                        readonlyWi.get(p).setValue("True");
                     }
-                    for (final String p : driverTypeCB.keySet()) {
+                    for (final String p : driverTypeWi.keySet()) {
                         if (getResource().isNew()) {
-                            driverTypeCB.get(p).setValue("raw");
+                            driverTypeWi.get(p).setValue("raw");
                         } else {
-                            if (driverTypeCB.get(p).getValue() != null) {
-                                driverTypeCB.get(p).setValue(null);
+                            if (driverTypeWi.get(p).getValue() != null) {
+                                driverTypeWi.get(p).setValue(null);
                             }
                         }
                     }
                 } else if ("virtio/disk".equals(newValue)) {
-                    for (final String p : driverTypeCB.keySet()) {
-                        driverTypeCB.get(p).setValue("raw");
+                    for (final String p : driverTypeWi.keySet()) {
+                        driverTypeWi.get(p).setValue("raw");
                     }
                 } else {
-                    for (final String p : readonlyCB.keySet()) {
-                        readonlyCB.get(p).setValue("False");
+                    for (final String p : readonlyWi.keySet()) {
+                        readonlyWi.get(p).setValue("False");
                         if (getResource().isNew()) {
-                            driverTypeCB.get(p).setValue("raw");
+                            driverTypeWi.get(p).setValue("raw");
                         }
                     }
                 }
@@ -570,13 +610,14 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
     }
 
     /** Whether the parameter should be enabled. */
-    @Override protected String isEnabled(final String param) {
+    @Override
+    protected String isEnabled(final String param) {
         return null;
     }
 
     /** Whether the parameter should be enabled only in advanced mode. */
-    @Override protected boolean isEnabledOnlyInAdvancedMode(
-                                                        final String param) {
+    @Override
+    protected boolean isEnabledOnlyInAdvancedMode(final String param) {
          return IS_ENABLED_ONLY_IN_ADVANCED.contains(param);
     }
 
@@ -590,7 +631,7 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
                 for (final String param : getParametersFromXML()) {
                     final String oldValue = getParamSaved(param);
                     String value = getParamSaved(param);
-                    final GuiComboBox cb = paramComboBoxGet(param, null);
+                    final Widget wi = getWidget(param, null);
                     for (final Host h
                             : getVMSVirtualDomainInfo().getDefinedOnHosts()) {
                         final VMSXML vmsxml = getBrowser().getVMSXML(h);
@@ -604,9 +645,9 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
                     }
                     if (!Tools.areEqual(value, oldValue)) {
                         getResource().setValue(param, value);
-                        if (cb != null) {
+                        if (wi != null) {
                             /* only if it is not changed by user. */
-                            cb.setValue(value);
+                            wi.setValue(value);
                         }
                     }
                 }
@@ -619,15 +660,16 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
     }
 
     /** Returns combo box for parameter. */
-    @Override protected GuiComboBox getParamComboBox(final String param,
-                                                     final String prefix,
-                                                     final int width) {
+    @Override
+    protected Widget createWidget(final String param,
+                                  final String prefix,
+                                  final int width) {
         if (DiskData.SOURCE_FILE.equals(param)) {
             final String sourceFile = getParamSaved(DiskData.SOURCE_FILE);
-            final String regexp = "[^/]$";
+            final String regexp = ".*[^/]$";
             final MyButton fileChooserBtn = new MyButton("Browse...");
             fileChooserBtn.miniButton();
-            final GuiComboBox paramCB = new GuiComboBox(
+            final Widget paramWi = new Widget(
                                   sourceFile,
                                   getParamPossibleChoices(param),
                                   null, /* units */
@@ -638,82 +680,89 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
                                   new AccessMode(getAccessType(param),
                                                  false), /* only adv. mode */
                                   fileChooserBtn);
-            paramCB.setAlwaysEditable(true);
+            paramWi.setAlwaysEditable(true);
             if (prefix == null) {
-                sourceFileCB.put("", paramCB);
+                sourceFileWi.put("", paramWi);
             } else {
-                sourceFileCB.put(prefix, paramCB);
+                sourceFileWi.put(prefix, paramWi);
             }
             if (Tools.isWindows()) {
-                /* does not work on windows and I tries, ultimatly because
+                /* does not work on windows and I tried, ultimately because
                    FilePane.usesShellFolder(fc) in BasicFileChooserUI returns
                    true and it is not possible to descent into a directory.
                    TODO: It may work in the future.
                 */
-                paramCB.setTFButtonEnabled(false);
+                paramWi.setTFButtonEnabled(false);
             }
             fileChooserBtn.addActionListener(new ActionListener() {
-                @Override public void actionPerformed(final ActionEvent e) {
+                @Override
+                public void actionPerformed(final ActionEvent e) {
                     final Thread t = new Thread(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             String file;
-                            final String oldFile = paramCB.getStringValue();
+                            final String oldFile = paramWi.getStringValue();
                             if (oldFile == null || "".equals(oldFile)) {
                                 file = LIBVIRT_IMAGE_LOCATION;
                             } else {
                                 file = oldFile;
                             }
-                            startFileChooser(paramCB, file);
+                            startFileChooser(paramWi,
+                                             file,
+                                             FILECHOOSER_FILE_ONLY);
                         }
                     });
                     t.start();
                 }
             });
-            paramComboBoxAdd(param, prefix, paramCB);
-            return paramCB;
+            widgetAdd(param, prefix, paramWi);
+            return paramWi;
         } else {
-            final GuiComboBox paramCB =
-                                 super.getParamComboBox(param, prefix, width);
+            final Widget paramWi = super.createWidget(param, prefix, width);
             if (DiskData.TYPE.equals(param)
                 || DiskData.TARGET_BUS_TYPE.equals(param)) {
-                paramCB.setAlwaysEditable(false);
+                paramWi.setAlwaysEditable(false);
             } else if (DiskData.SOURCE_DEVICE.equals(param)) {
+                paramWi.setAlwaysEditable(true);
                 if (prefix == null) {
-                    sourceDeviceCB.put("", paramCB);
+                    sourceDeviceWi.put("", paramWi);
                 } else {
-                    sourceDeviceCB.put(prefix, paramCB);
+                    sourceDeviceWi.put(prefix, paramWi);
                 }
             } else if (DiskData.TARGET_DEVICE.equals(param)) {
+                paramWi.setAlwaysEditable(true);
                 if (prefix == null) {
-                    targetDeviceCB.put("", paramCB);
+                    targetDeviceWi.put("", paramWi);
                 } else {
-                    targetDeviceCB.put(prefix, paramCB);
+                    targetDeviceWi.put(prefix, paramWi);
                 }
             } else if (DiskData.DRIVER_NAME.equals(param)) {
                 if (prefix == null) {
-                    driverNameCB.put("", paramCB);
+                    driverNameWi.put("", paramWi);
                 } else {
-                    driverNameCB.put(prefix, paramCB);
+                    driverNameWi.put(prefix, paramWi);
                 }
             } else if (DiskData.DRIVER_TYPE.equals(param)) {
                 if (prefix == null) {
-                    driverTypeCB.put("", paramCB);
+                    driverTypeWi.put("", paramWi);
                 } else {
-                    driverTypeCB.put(prefix, paramCB);
+                    driverTypeWi.put(prefix, paramWi);
                 }
             } else if (DiskData.READONLY.equals(param)) {
                 if (prefix == null) {
-                    readonlyCB.put("", paramCB);
+                    readonlyWi.put("", paramWi);
                 } else {
-                    readonlyCB.put(prefix, paramCB);
+                    readonlyWi.put(prefix, paramWi);
                 }
             }
-            return paramCB;
+            return paramWi;
         }
     }
 
     /** Removes this disk without confirmation dialog. */
-    @Override protected void removeMyselfNoConfirm(final boolean testOnly) {
+    @Override
+    protected void removeMyselfNoConfirm(final boolean testOnly) {
+        final String virshOptions = getVMSVirtualDomainInfo().getVirshOptions();
         for (final Host h : getVMSVirtualDomainInfo().getDefinedOnHosts()) {
             final VMSXML vmsxml = getBrowser().getVMSXML(h);
             if (vmsxml != null) {
@@ -721,17 +770,18 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
                                                 new HashMap<String, String>();
                 parameters.put(DiskData.SAVED_TARGET_DEVICE, getName());
                 vmsxml.removeDiskXML(getVMSVirtualDomainInfo().getDomainName(),
-                                     parameters);
+                                     parameters,
+                                     virshOptions);
             }
         }
-        for (final Host h : getVMSVirtualDomainInfo().getDefinedOnHosts()) {
-            getBrowser().periodicalVMSUpdate(h);
-        }
+        getBrowser().periodicalVMSUpdate(
+                                getVMSVirtualDomainInfo().getDefinedOnHosts());
         removeNode();
     }
 
     /** Returns string representation. */
-    @Override public String toString() {
+    @Override
+    public String toString() {
         final StringBuilder s = new StringBuilder(30);
         final String name = getName();
         if (name == null) {
@@ -754,7 +804,8 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
     /**
      * Returns whether this item is removeable (null), or string why it isn't.
      */
-    @Override protected String isRemoveable() {
+    @Override
+    protected String isRemoveable() {
         return null;
     }
 
@@ -762,9 +813,11 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
     static MyButton getNewBtn(final VMSVirtualDomainInfo vdi) {
         final MyButton newBtn = new MyButton("Add Disk");
         newBtn.addActionListener(new ActionListener() {
-            @Override public void actionPerformed(final ActionEvent e) {
+            @Override
+            public void actionPerformed(final ActionEvent e) {
                 final Thread t = new Thread(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         vdi.addDiskPanel();
                     }
                 });
@@ -775,8 +828,9 @@ public final class VMSDiskInfo extends VMSHardwareInfo {
     }
 
     /** Returns the regexp of the parameter. */
-    @Override protected String getParamRegexp(final String param) {
-        if ("file".equals(getComboBoxValue(DiskData.TYPE))
+    @Override
+    protected String getParamRegexp(final String param) {
+        if (FILE_TYPE.equals(getComboBoxValue(DiskData.TYPE))
             && DiskData.SOURCE_FILE.equals(param)) {
             return ".*[^/]$";
         }

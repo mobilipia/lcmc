@@ -30,10 +30,7 @@ import lcmc.utilities.MyButton;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
-import javax.swing.JScrollPane;
-import javax.swing.ScrollPaneConstants;
 import javax.swing.BoxLayout;
-import javax.swing.JEditorPane;
 
 import java.awt.FlowLayout;
 import java.awt.Color;
@@ -111,10 +108,12 @@ final class EmptyViewPanel extends ViewPanel implements AllHostsUpdatable {
         addHostButton.setBackgroundColor(Browser.STATUS_BACKGROUND);
         addHostButton.setPreferredSize(BIG_BUTTON_DIMENSION);
         addHostButton.addActionListener(new ActionListener() {
-            @Override public void actionPerformed(final ActionEvent e) {
+            @Override
+            public void actionPerformed(final ActionEvent e) {
                 final Thread thread = new Thread(
                     new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             final AddHostDialog ahd = new AddHostDialog();
                             ahd.showDialogs();
                         }
@@ -137,10 +136,12 @@ final class EmptyViewPanel extends ViewPanel implements AllHostsUpdatable {
         addClusterButton.setPreferredSize(BIG_BUTTON_DIMENSION);
         addClusterButton.setMinimumSize(BIG_BUTTON_DIMENSION);
         addClusterButton.addActionListener(new ActionListener() {
-            @Override public void actionPerformed(final ActionEvent e) {
+            @Override
+            public void actionPerformed(final ActionEvent e) {
                 final Thread thread = new Thread(
                     new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             AddClusterDialog acd = new AddClusterDialog();
                             acd.showDialogs();
                         }
@@ -153,7 +154,8 @@ final class EmptyViewPanel extends ViewPanel implements AllHostsUpdatable {
         buttonPanel.add(addClusterButton);
         if (!Tools.getConfigData().getAutoHosts().isEmpty()) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     addHostButton.pressButton();
                 }
             });
@@ -167,7 +169,8 @@ final class EmptyViewPanel extends ViewPanel implements AllHostsUpdatable {
     }
 
     /** Updates the all hosts menu item. */
-    @Override public void allHostsUpdate() {
+    @Override
+    public void allHostsUpdate() {
         browser.updateHosts();
     }
 }

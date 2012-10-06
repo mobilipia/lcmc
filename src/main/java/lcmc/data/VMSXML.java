@@ -101,6 +101,9 @@ public final class VMSXML extends XML {
     /** Map from domain name and target device to the disk data. */
     private final Map<String, Map<String, DiskData>> disksMap =
                            new LinkedHashMap<String, Map<String, DiskData>>();
+    /** Map from domain name and target device to the fs data. */
+    private final Map<String, Map<String, FilesystemData>> filesystemsMap =
+                       new LinkedHashMap<String, Map<String, FilesystemData>>();
     /** Map from domain name and mac address to the interface data. */
     private final Map<String, Map<String, InterfaceData>> interfacesMap =
                        new LinkedHashMap<String, Map<String, InterfaceData>>();
@@ -150,14 +153,24 @@ public final class VMSXML extends XML {
     public static final String VM_PARAM_CURRENTMEMORY = "currentMemory";
     /** VM field: memory. */
     public static final String VM_PARAM_MEMORY = "memory";
+    /** VM node: os-boot. */
+    public static final String OS_BOOT_NODE = "boot";
+    /** VM node: os-boot dev attribute. */
+    public static final String OS_BOOT_NODE_DEV = "dev";
     /** VM field: os-boot. */
     public static final String VM_PARAM_BOOT = "boot";
+    /** VM field: os-boot 2. */
+    public static final String VM_PARAM_BOOT_2 = "boot2";
     /** VM field: loader. */
     public static final String VM_PARAM_LOADER = "loader";
     /** VM field: autostart. */
     public static final String VM_PARAM_AUTOSTART = "autostart";
+    /** VM field: virsh options. */
+    public static final String VM_PARAM_VIRSH_OPTIONS = "virsh-options";
     /** VM field: type. */
     public static final String VM_PARAM_TYPE = "type";
+    /** VM field: init. */
+    public static final String VM_PARAM_INIT = "init";
     /** VM field: arch. */
     public static final String VM_PARAM_TYPE_ARCH = "arch";
     /** VM field: machine. */
@@ -200,6 +213,8 @@ public final class VMSXML extends XML {
     public static final String NET_PARAM_UUID = "uuid";
     /** Network field: autostart. */
     public static final String NET_PARAM_AUTOSTART = "autostart";
+    /** Auto generated disk address. . */
+    public static final String HW_ADDRESS = "address";
     /** Map from paramater to its xml tag. */
     public static final Map<String, String> INTERFACE_TAG_MAP =
                                              new HashMap<String, String>();
@@ -211,6 +226,12 @@ public final class VMSXML extends XML {
                                              new HashMap<String, String>();
     /** Map from paramater to its xml attribute. */
     public static final Map<String, String> DISK_ATTRIBUTE_MAP =
+                                             new HashMap<String, String>();
+    /** Map from paramater to its xml tag. */
+    public static final Map<String, String> FILESYSTEM_TAG_MAP =
+                                             new HashMap<String, String>();
+    /** Map from paramater to its xml attribute. */
+    public static final Map<String, String> FILESYSTEM_ATTRIBUTE_MAP =
                                              new HashMap<String, String>();
     /** Map from paramater to its xml tag. */
     public static final Map<String, String> INPUTDEV_TAG_MAP =
@@ -285,6 +306,12 @@ public final class VMSXML extends XML {
         DISK_ATTRIBUTE_MAP.put(DiskData.TARGET_TYPE, "device");
         DISK_TAG_MAP.put(DiskData.READONLY, "readonly");
         DISK_TAG_MAP.put(DiskData.SHAREABLE, "shareable");
+
+        FILESYSTEM_ATTRIBUTE_MAP.put(InterfaceData.TYPE, "type");
+        FILESYSTEM_TAG_MAP.put(FilesystemData.SOURCE_DIR, "source");
+        FILESYSTEM_ATTRIBUTE_MAP.put(FilesystemData.SOURCE_DIR, "dir");
+        FILESYSTEM_TAG_MAP.put(FilesystemData.TARGET_DIR, "target");
+        FILESYSTEM_ATTRIBUTE_MAP.put(FilesystemData.TARGET_DIR, "dir");
 
         INPUTDEV_ATTRIBUTE_MAP.put(InputDevData.TYPE, "type");
         INPUTDEV_ATTRIBUTE_MAP.put(InputDevData.BUS, "bus");
@@ -531,10 +558,22 @@ public final class VMSXML extends XML {
         }
     }
 
+    /** Return config name. */
+    private String getConfigName(final String type, final String domainName) {
+        if ("xen".equals(type)) {
+            return "/etc/xen/vm/" + domainName + ".xml";
+        } else if ("lxc".equals(type)) {
+            return "/etc/libvirt/lxc/" + domainName + ".xml";
+        } else {
+            return "/etc/libvirt/qemu/" + domainName + ".xml";
+        }
+    }
+
     /** Creates XML for new domain. */
     public Node createDomainXML(final String uuid,
                                 final String domainName,
-                                final Map<String, String> parametersMap) {
+                                final Map<String, String> parametersMap,
+                                final boolean needConsole) {
         //<domain type='kvm'>
         //  <memory>524288</memory>
         //  <name>fff</name>
@@ -545,10 +584,7 @@ public final class VMSXML extends XML {
 
         /* domain type: kvm/xen */
         final String type = parametersMap.get(VM_PARAM_DOMAIN_TYPE);
-        String configName = "/etc/libvirt/qemu/" + domainName + ".xml";
-        if ("xen".equals(type)) {
-            configName = "/etc/xen/vm/" + domainName + ".xml";
-        }
+        final String configName = getConfigName(type, domainName);
         namesConfigsMap.put(domainName, configName);
         /* build xml */
         final String encoding = "UTF-8";
@@ -611,13 +647,28 @@ public final class VMSXML extends XML {
         typeNode.setAttribute("arch", parametersMap.get(VM_PARAM_TYPE_ARCH));
         typeNode.setAttribute("machine",
                               parametersMap.get(VM_PARAM_TYPE_MACHINE));
+        final String init = parametersMap.get(VM_PARAM_INIT);
+        if (init != null && !"".equals(init)) {
+            final Element initNode = (Element) osNode.appendChild(
+                                                      doc.createElement("init"));
+            initNode.appendChild(doc.createTextNode(init));
+        }
         final Element bootNode = (Element) osNode.appendChild(
-                                                  doc.createElement("boot"));
+                                              doc.createElement(OS_BOOT_NODE));
+        bootNode.setAttribute(OS_BOOT_NODE_DEV,
+                              parametersMap.get(VM_PARAM_BOOT));
+        final String bootDev2 = parametersMap.get(VM_PARAM_BOOT_2);
+        if (bootDev2 != null && !"".equals(bootDev2)) {
+            final Element bootNode2 = (Element) osNode.appendChild(
+                                              doc.createElement(OS_BOOT_NODE));
+            bootNode2.setAttribute(OS_BOOT_NODE_DEV,
+                                   parametersMap.get(VM_PARAM_BOOT_2));
+        }
+
         final Node loaderNode = (Element) osNode.appendChild(
                                                   doc.createElement("loader"));
         loaderNode.appendChild(doc.createTextNode(
                                           parametersMap.get(VM_PARAM_LOADER)));
-        bootNode.setAttribute("dev", parametersMap.get(VM_PARAM_BOOT));
 
         /* features */
         addFeatures(doc, root, parametersMap);
@@ -649,9 +700,14 @@ public final class VMSXML extends XML {
         }
         /* devices / emulator */
         final String emulator = parametersMap.get(VM_PARAM_EMULATOR);
-        if (emulator != null) {
+        if (emulator != null || needConsole) {
             final Element devicesNode = (Element) root.appendChild(
                                               doc.createElement("devices"));
+            if (needConsole) {
+                final Element consoleNode = (Element) devicesNode.appendChild(
+                                                  doc.createElement("console"));
+                consoleNode.setAttribute("type", "pty");
+            }
             final Element emulatorNode = (Element) devicesNode.appendChild(
                                               doc.createElement("emulator"));
             emulatorNode.appendChild(doc.createTextNode(emulator));
@@ -677,9 +733,11 @@ public final class VMSXML extends XML {
         paths.put(VM_PARAM_VCPU, "vcpu");
         paths.put(VM_PARAM_BOOTLOADER, "bootloader");
         paths.put(VM_PARAM_BOOT, "os/boot");
+        paths.put(VM_PARAM_BOOT_2, "os/boot");
         paths.put(VM_PARAM_TYPE, "os/type");
         paths.put(VM_PARAM_TYPE_ARCH, "os/type");
         paths.put(VM_PARAM_TYPE_MACHINE, "os/type");
+        paths.put(VM_PARAM_INIT, "os/init");
         paths.put(VM_PARAM_LOADER, "os/loader");
         paths.put(VM_PARAM_CPU_MATCH, "cpu");
         paths.put(VM_PARAM_ACPI, "features");
@@ -690,6 +748,7 @@ public final class VMSXML extends XML {
         paths.put(VM_PARAM_ON_REBOOT, "on_reboot");
         paths.put(VM_PARAM_ON_CRASH, "on_crash");
         paths.put(VM_PARAM_EMULATOR, "devices/emulator");
+        final Document doc = domainNode.getOwnerDocument();
         try {
             for (final String param : parametersMap.keySet()) {
                 final String path = paths.get(param);
@@ -700,9 +759,17 @@ public final class VMSXML extends XML {
                                                    path,
                                                    domainNode,
                                                    XPathConstants.NODESET);
-                final Element node = (Element) nodes.item(0);
+                Element node = (Element) nodes.item(0);
                 if (node == null) {
                     continue;
+                }
+                if (VM_PARAM_BOOT_2.equals(param)) {
+                    if (nodes.getLength() > 1) {
+                        node = (Element) nodes.item(1);
+                    } else {
+                        node = (Element) node.getParentNode().appendChild(
+                                              doc.createElement(OS_BOOT_NODE));
+                    }
                 }
                 String value = parametersMap.get(param);
                 if (VM_PARAM_MEMORY.equals(param)
@@ -717,7 +784,13 @@ public final class VMSXML extends XML {
                     || VM_PARAM_HAP.equals(param)) {
                     domainNode.removeChild(node);
                 } else if (VM_PARAM_BOOT.equals(param)) {
-                    node.setAttribute("dev", value);
+                    node.setAttribute(OS_BOOT_NODE_DEV, value);
+                } else if (VM_PARAM_BOOT_2.equals(param)) {
+                    if (value == null || "".equals(value)) {
+                        node.getParentNode().removeChild(node);
+                    } else {
+                        node.setAttribute(OS_BOOT_NODE_DEV, value);
+                    }
                 } else if (VM_PARAM_TYPE_ARCH.equals(param)) {
                     node.setAttribute("arch", value);
                 } else if (VM_PARAM_TYPE_MACHINE.equals(param)) {
@@ -734,19 +807,14 @@ public final class VMSXML extends XML {
                 } else {
                     final Node n = getChildNode(node, "#text");
                     if (n == null) {
-                        node.appendChild(
-                            node.getOwnerDocument().createTextNode(value));
+                        node.appendChild(doc.createTextNode(value));
                     } else {
                         n.setNodeValue(value);
                     }
                 }
             }
-            addCPUMatchNode(domainNode.getOwnerDocument(),
-                            domainNode,
-                            parametersMap);
-            addFeatures(domainNode.getOwnerDocument(),
-                        domainNode,
-                        parametersMap);
+            addCPUMatchNode(doc, domainNode, parametersMap);
+            addFeatures(doc, domainNode, parametersMap);
         } catch (final javax.xml.xpath.XPathExpressionException e) {
             Tools.appError("could not evaluate: ", e);
             return null;
@@ -834,6 +902,11 @@ public final class VMSXML extends XML {
                     }
                 }
             }
+            final Element hwAddressNode = (Element) getChildNode(hwNode,
+                                                                 HW_ADDRESS);
+            if (hwAddressNode != null) {
+                hwNode.removeChild(hwAddressNode);
+            }
         } catch (final javax.xml.xpath.XPathExpressionException e) {
             Tools.appError("could not evaluate: ", e);
             return;
@@ -844,7 +917,8 @@ public final class VMSXML extends XML {
     private void removeXML(final String domainName,
                            final Map<String, String> parametersMap,
                            final String path,
-                           final VirtualHardwareComparator vhc) {
+                           final VirtualHardwareComparator vhc,
+                           final String virshOptions) {
         final String configName = namesConfigsMap.get(domainName);
         if (configName == null) {
             return;
@@ -867,7 +941,7 @@ public final class VMSXML extends XML {
             Tools.appError("could not evaluate: ", e);
             return;
         }
-        saveAndDefine(domainNode, domainName);
+        saveAndDefine(domainNode, domainName, virshOptions);
     }
 
     /** Modify disk XML. */
@@ -884,13 +958,31 @@ public final class VMSXML extends XML {
                   getDiskDataComparator());
     }
 
+    /** Modify fs XML. */
+    public void modifyFilesystemXML(final Node domainNode,
+                              final String domainName,
+                              final Map<String, String> parametersMap) {
+        modifyXML(domainNode,
+                  domainName,
+                  FILESYSTEM_TAG_MAP,
+                  FILESYSTEM_ATTRIBUTE_MAP,
+                  parametersMap,
+                  "devices/filesystem",
+                  "filesystem",
+                  getFilesystemDataComparator());
+    }
+
     /** Save and define. */
     public void saveAndDefine(final Node domainNode,
-                              final String domainName) {
+                              final String domainName,
+                              final String virshOptions) {
         final String configName = namesConfigsMap.get(domainName);
         final String defineCommand =
-                            VIRSH.getDefineCommand(host, configName + ".new"
-                            + " && rm " + configName + ".new");
+                            VIRSH.getDefineCommand(
+                                                host,
+                                                configName + ".new" + " && rm "
+                                                + configName + ".new",
+                                                virshOptions);
         saveDomainXML(configName, domainNode, defineCommand);
         host.setVMInfoMD5(null);
     }
@@ -995,74 +1087,101 @@ public final class VMSXML extends XML {
 
     /** Remove disk XML. */
     public void removeDiskXML(final String domainName,
-                              final Map<String, String> parametersMap) {
+                              final Map<String, String> parametersMap,
+                              final String virshOptions) {
         removeXML(domainName,
                   parametersMap,
                   "devices/disk",
-                  getDiskDataComparator());
+                  getDiskDataComparator(),
+                  virshOptions);
+    }
+
+    /** Remove filesystem XML. */
+    public void removeFilesystemXML(final String domainName,
+                                    final Map<String, String> parametersMap,
+                                    final String virshOptions) {
+        removeXML(domainName,
+                  parametersMap,
+                  "devices/filesystem",
+                  getFilesystemDataComparator(),
+                  virshOptions);
     }
 
     /** Remove interface XML. */
     public void removeInterfaceXML(final String domainName,
-                                   final Map<String, String> parametersMap) {
+                                   final Map<String, String> parametersMap,
+                                   final String virshOptions) {
         removeXML(domainName,
                   parametersMap,
                   "devices/interface",
-                  getInterfaceDataComparator());
+                  getInterfaceDataComparator(),
+                  virshOptions);
     }
 
     /** Remove input device XML. */
     public void removeInputDevXML(final String domainName,
-                                  final Map<String, String> parametersMap) {
+                                  final Map<String, String> parametersMap,
+                                  final String virshOptions) {
         removeXML(domainName,
                   parametersMap,
                   "devices/input",
-                  getInputDevDataComparator());
+                  getInputDevDataComparator(),
+                  virshOptions);
     }
 
     /** Remove graphics device XML. */
     public void removeGraphicsXML(final String domainName,
-                                  final Map<String, String> parametersMap) {
+                                  final Map<String, String> parametersMap,
+                                  final String virshOptions) {
         removeXML(domainName,
                   parametersMap,
                   "devices/graphics",
-                  getGraphicsDataComparator());
+                  getGraphicsDataComparator(),
+                  virshOptions);
     }
 
     /** Remove sound device XML. */
     public void removeSoundXML(final String domainName,
-                               final Map<String, String> parametersMap) {
+                               final Map<String, String> parametersMap,
+                               final String virshOptions) {
         removeXML(domainName,
                   parametersMap,
                   "devices/sound",
-                  getSoundDataComparator());
+                  getSoundDataComparator(),
+                  virshOptions);
     }
 
     /** Remove serial device XML. */
     public void removeSerialXML(final String domainName,
-                                final Map<String, String> parametersMap) {
+                                final Map<String, String> parametersMap,
+                                final String virshOptions) {
         removeXML(domainName,
                   parametersMap,
                   "devices/serial",
-                  getSerialDataComparator());
+                  getSerialDataComparator(),
+                  virshOptions);
     }
 
     /** Remove parallel device XML. */
     public void removeParallelXML(final String domainName,
-                                  final Map<String, String> parametersMap) {
+                                  final Map<String, String> parametersMap,
+                                  final String virshOptions) {
         removeXML(domainName,
                   parametersMap,
                   "devices/parallel",
-                  getParallelDataComparator());
+                  getParallelDataComparator(),
+                  virshOptions);
     }
 
     /** Remove parallel device XML. */
     public void removeVideoXML(final String domainName,
-                               final Map<String, String> parametersMap) {
+                               final Map<String, String> parametersMap,
+                               final String virshOptions) {
         removeXML(domainName,
                   parametersMap,
                   "devices/video",
-                  getVideoDataComparator());
+                  getVideoDataComparator(),
+                  virshOptions);
     }
 
     /** Updates data. */
@@ -1082,6 +1201,10 @@ public final class VMSXML extends XML {
         if (output == null) {
             return false;
         }
+        return update(output);
+    }
+
+    public boolean update(final String output) {
         final Document document = getXMLDocument(output);
         mXMLDocumentWriteLock.lock();
         xmlDocument = document;
@@ -1091,8 +1214,7 @@ public final class VMSXML extends XML {
         }
         final Node vmsNode = getChildNode(document, "vms");
         final String md5 = getAttribute(vmsNode, "md5");
-        if (md5 == null
-            || md5.equals(host.getVMInfoMD5())) {
+        if (md5 == null || md5.equals(host.getVMInfoMD5())) {
             return false;
         }
         host.setVMInfoMD5(md5);
@@ -1163,6 +1285,10 @@ public final class VMSXML extends XML {
                 bridgeSTP = getAttribute(optionNode, "stp");
                 bridgeDelay = getAttribute(optionNode, "delay");
                 bridgeForwardDelay = getAttribute(optionNode, "forwardDelay");
+            } else if ("mac".equals(nodeName)) {
+                /* skip */
+            } else if ("ip".equals(nodeName)) {
+                /* skip */
             } else if (!"#text".equals(nodeName)) {
                 Tools.appWarning("unknown network option: "
                                  + nodeName);
@@ -1226,12 +1352,22 @@ public final class VMSXML extends XML {
                                     Tools.convertKilobytes(getText(option)));
             } else if ("os".equals(option.getNodeName())) {
                 final NodeList osOptions = option.getChildNodes();
+                int bootOption = 0;
                 for (int j = 0; j < osOptions.getLength(); j++) {
                     final Node osOption = osOptions.item(j);
-                    if (VM_PARAM_BOOT.equals(osOption.getNodeName())) {
-                        parameterValues.put(name,
-                                            VM_PARAM_BOOT,
-                                            getAttribute(osOption, "dev"));
+                    if (OS_BOOT_NODE.equals(osOption.getNodeName())) {
+                        if (bootOption == 0) {
+                            parameterValues.put(
+                                    name,
+                                    VM_PARAM_BOOT,
+                                    getAttribute(osOption, OS_BOOT_NODE_DEV));
+                        } else {
+                            parameterValues.put(
+                                    name,
+                                    VM_PARAM_BOOT_2,
+                                    getAttribute(osOption, OS_BOOT_NODE_DEV));
+                        }
+                        bootOption++;
                     } else if (VM_PARAM_LOADER.equals(osOption.getNodeName())) {
                         parameterValues.put(name,
                                             VM_PARAM_LOADER,
@@ -1246,6 +1382,10 @@ public final class VMSXML extends XML {
                         parameterValues.put(name,
                                             VM_PARAM_TYPE_MACHINE,
                                             getAttribute(osOption, "machine"));
+                    } else if (VM_PARAM_INIT.equals(osOption.getNodeName())) {
+                        parameterValues.put(name,
+                                            VM_PARAM_INIT,
+                                            getText(osOption));
                     } else {
                         parameterValues.put(name,
                                             osOption.getNodeName(),
@@ -1327,6 +1467,8 @@ public final class VMSXML extends XML {
             } else if ("devices".equals(option.getNodeName())) {
                 final Map<String, DiskData> devMap =
                                     new LinkedHashMap<String, DiskData>();
+                final Map<String, FilesystemData> fsMap =
+                                    new LinkedHashMap<String, FilesystemData>();
                 final Map<String, InterfaceData> macMap =
                                     new LinkedHashMap<String, InterfaceData>();
                 final Map<String, InputDevData> inputMap =
@@ -1432,7 +1574,7 @@ public final class VMSXML extends XML {
                                 readonly = true;
                             } else if ("shareable".equals(nodeName)) {
                                 shareable = true;
-                            } else if ("address".equals(nodeName)) {
+                            } else if (HW_ADDRESS.equals(nodeName)) {
                                 /* it's generated, ignoring. */
                             } else if (!"#text".equals(nodeName)) {
                                 Tools.appWarning("unknown disk option: "
@@ -1451,6 +1593,30 @@ public final class VMSXML extends XML {
                                                       readonly,
                                                       shareable);
                             devMap.put(targetDev, diskData);
+                        }
+                    } else if ("filesystem".equals(deviceNode.getNodeName())) {
+                        final String type = getAttribute(deviceNode, "type");
+                        final NodeList opts = deviceNode.getChildNodes();
+                        String sourceDir = null;
+                        String targetDir = null;
+                        for (int k = 0; k < opts.getLength(); k++) {
+                            final Node optionNode = opts.item(k);
+                            final String nodeName = optionNode.getNodeName();
+                            if ("source".equals(nodeName)) {
+                                sourceDir = getAttribute(optionNode, "dir");
+                            } else if ("target".equals(nodeName)) {
+                                targetDir = getAttribute(optionNode, "dir");
+                            } else if (!"#text".equals(nodeName)) {
+                                Tools.appWarning("unknown fs option: "
+                                                 + nodeName);
+                            }
+                        }
+                        if (targetDir != null) {
+                            final FilesystemData filesystemData =
+                                                 new FilesystemData(type,
+                                                                    sourceDir,
+                                                                    targetDir);
+                            fsMap.put(targetDir, filesystemData);
                         }
                     } else if ("interface".equals(deviceNode.getNodeName())) {
                         final String type = getAttribute(deviceNode, "type");
@@ -1478,7 +1644,7 @@ public final class VMSXML extends XML {
                                 modelType = getAttribute(optionNode, "type");
                             } else if ("script".equals(nodeName)) {
                                 scriptPath = getAttribute(optionNode, "path");
-                            } else if ("address".equals(nodeName)) {
+                            } else if (HW_ADDRESS.equals(nodeName)) {
                                 /* it's generated, ignoring. */
                             } else if (!"#text".equals(nodeName)) {
                                 Tools.appWarning("unknown interface option: "
@@ -1502,7 +1668,7 @@ public final class VMSXML extends XML {
                         for (int k = 0; k < opts.getLength(); k++) {
                             final Node optionNode = opts.item(k);
                             final String nodeName = optionNode.getNodeName();
-                            if ("address".equals(nodeName)) {
+                            if (HW_ADDRESS.equals(nodeName)) {
                                 /* it's generated, ignoring. */
                             } else if (!"#text".equals(nodeName)) {
                                 Tools.appWarning("unknown sound option: "
@@ -1553,7 +1719,7 @@ public final class VMSXML extends XML {
                                 protocolType = getAttribute(optionNode, "type");
                             } else if ("target".equals(nodeName)) {
                                 targetPort = getAttribute(optionNode, "port");
-                            } else if ("address".equals(nodeName)) {
+                            } else if (HW_ADDRESS.equals(nodeName)) {
                                 /* it's generated, ignoring. */
                             } else if (!"#text".equals(nodeName)) {
                                 Tools.appWarning("unknown serial option: "
@@ -1617,7 +1783,7 @@ public final class VMSXML extends XML {
                                 protocolType = getAttribute(optionNode, "type");
                             } else if ("target".equals(nodeName)) {
                                 targetPort = getAttribute(optionNode, "port");
-                            } else if ("address".equals(nodeName)) {
+                            } else if (HW_ADDRESS.equals(nodeName)) {
                                 /* it's generated, ignoring. */
                             } else if (!"#text".equals(nodeName)) {
                                 Tools.appWarning("unknown parallel option: "
@@ -1654,7 +1820,7 @@ public final class VMSXML extends XML {
                                 modelType = getAttribute(optionNode, "type");
                                 modelVRAM = getAttribute(optionNode, "vram");
                                 modelHeads = getAttribute(optionNode, "heads");
-                            } else if ("address".equals(nodeName)) {
+                            } else if (HW_ADDRESS.equals(nodeName)) {
                                 /* it's generated, ignoring. */
                             } else if (!"#text".equals(nodeName)) {
                                 Tools.appWarning("unknown video option: "
@@ -1679,6 +1845,7 @@ public final class VMSXML extends XML {
                     }
                 }
                 disksMap.put(name, devMap);
+                filesystemsMap.put(name, fsMap);
                 interfacesMap.put(name, macMap);
                 inputDevsMap.put(name, inputMap);
                 graphicsDevsMap.put(name, graphicsMap);
@@ -1702,12 +1869,14 @@ public final class VMSXML extends XML {
         }
         final Node infoNode = getChildNode(vmNode, "info");
         final String domainName = getAttribute(vmNode, VM_PARAM_NAME);
-
         final String autostart = getAttribute(vmNode, VM_PARAM_AUTOSTART);
-        if (autostart == null) {
-            parameterValues.put(domainName, VM_PARAM_AUTOSTART, "false");
+        final String virshOptions = getAttribute(vmNode,
+                                                 VM_PARAM_VIRSH_OPTIONS);
+        parameterValues.put(domainName, VM_PARAM_VIRSH_OPTIONS, virshOptions);
+        if (autostart != null && "True".equals(autostart)) {
+            parameterValues.put(domainName, VM_PARAM_AUTOSTART, host.getName());
         } else {
-            parameterValues.put(domainName, VM_PARAM_AUTOSTART, autostart);
+            parameterValues.put(domainName, VM_PARAM_AUTOSTART, null);
         }
         if (infoNode != null) {
             parseInfo(domainName, getText(infoNode));
@@ -1718,17 +1887,13 @@ public final class VMSXML extends XML {
             final String vncdisplay = getText(vncdisplayNode).trim();
             final Matcher m = DISPLAY_PATTERN.matcher(vncdisplay);
             if (m.matches()) {
-                remotePorts.put(domainName, Integer.parseInt(m.group(1)) + 5900);
+                remotePorts.put(domainName,
+                                Integer.parseInt(m.group(1)) + 5900);
             }
         }
         final Node configNode = getChildNode(vmNode, "config");
         final String type = parseConfig(configNode, domainName);
-        String configName;
-        if ("xen".equals(type)) {
-            configName = "/etc/xen/vm/" + domainName + ".xml";
-        } else {
-            configName = "/etc/libvirt/qemu/" + domainName + ".xml";
-        }
+        final String configName = getConfigName(type, domainName);
         configsMap.put(configName, domainName);
         namesConfigsMap.put(domainName, configName);
     }
@@ -1812,6 +1977,11 @@ public final class VMSXML extends XML {
     /** Returns disk data. */
     public Map<String, DiskData> getDisks(final String name) {
         return disksMap.get(name);
+    }
+
+    /** Returns fs data. */
+    public Map<String, FilesystemData> getFilesystems(final String name) {
+        return filesystemsMap.get(name);
     }
 
     /** Returns interface data. */
@@ -1950,9 +2120,9 @@ public final class VMSXML extends XML {
     /** Returns function that gets the node that belongs to the paremeters. */
     protected VirtualHardwareComparator getDiskDataComparator() {
         return new VirtualHardwareComparator() {
-            @Override public Element getElement(
-                                    final NodeList nodes,
-                                    final Map<String, String> parameters) {
+            @Override
+            public Element getElement(final NodeList nodes,
+                                      final Map<String, String> parameters) {
                 Element el = null;
                 final String targetDev = parameters.get(
                                                 DiskData.SAVED_TARGET_DEVICE);
@@ -1970,11 +2140,33 @@ public final class VMSXML extends XML {
     }
 
     /** Returns function that gets the node that belongs to the paremeters. */
+    protected VirtualHardwareComparator getFilesystemDataComparator() {
+        return new VirtualHardwareComparator() {
+            @Override
+            public Element getElement(final NodeList nodes,
+                                      final Map<String, String> parameters) {
+                Element el = null;
+                final String targetDev = parameters.get(
+                                            FilesystemData.SAVED_TARGET_DIR);
+                if (targetDev != null) {
+                    for (int i = 0; i < nodes.getLength(); i++) {
+                        final Node mn = getChildNode(nodes.item(i), "target");
+                        if (targetDev.equals(getAttribute(mn, "dir"))) {
+                            el = (Element) nodes.item(i);
+                        }
+                    }
+                }
+                return el;
+            }
+        };
+    }
+
+    /** Returns function that gets the node that belongs to the paremeters. */
     protected VirtualHardwareComparator getInterfaceDataComparator() {
         return new VirtualHardwareComparator() {
-            @Override public Element getElement(
-                                    final NodeList nodes,
-                                    final Map<String, String> parameters) {
+            @Override
+            public Element getElement(final NodeList nodes,
+                                      final Map<String, String> parameters) {
                 final String macAddress = parameters.get(
                                               InterfaceData.SAVED_MAC_ADDRESS);
                 Element el = null;
@@ -1995,9 +2187,9 @@ public final class VMSXML extends XML {
     /** Returns function that gets the node that belongs to the paremeters. */
     protected VirtualHardwareComparator getInputDevDataComparator() {
         return new VirtualHardwareComparator() {
-            @Override public Element getElement(
-                                    final NodeList nodes,
-                                    final Map<String, String> parameters) {
+            @Override
+            public Element getElement(final NodeList nodes,
+                                      final Map<String, String> parameters) {
                 final String type = parameters.get(InputDevData.SAVED_TYPE);
                 final String bus = parameters.get(InputDevData.SAVED_BUS);
                 Element el = null;
@@ -2019,9 +2211,9 @@ public final class VMSXML extends XML {
     /** Returns function that gets the node that belongs to the paremeters. */
     protected VirtualHardwareComparator getGraphicsDataComparator() {
         return new VirtualHardwareComparator() {
-            @Override public Element getElement(
-                                    final NodeList nodes,
-                                    final Map<String, String> parameters) {
+            @Override
+            public Element getElement(final NodeList nodes,
+                                      final Map<String, String> parameters) {
                 final String type = parameters.get(GraphicsData.SAVED_TYPE);
                 Element el = null;
                 if (type != null) {
@@ -2041,9 +2233,9 @@ public final class VMSXML extends XML {
     /** Returns function that gets the node that belongs to the paremeters. */
     protected VirtualHardwareComparator getSoundDataComparator() {
         return new VirtualHardwareComparator() {
-            @Override public Element getElement(
-                                    final NodeList nodes,
-                                    final Map<String, String> parameters) {
+            @Override
+            public Element getElement(final NodeList nodes,
+                                      final Map<String, String> parameters) {
                 final String model = parameters.get(SoundData.SAVED_MODEL);
                 Element el = null;
                 if (model != null) {
@@ -2063,9 +2255,9 @@ public final class VMSXML extends XML {
     /** Returns function that gets the node that belongs to the paremeters. */
     protected VirtualHardwareComparator getSerialDataComparator() {
         return new VirtualHardwareComparator() {
-            @Override public Element getElement(
-                                    final NodeList nodes,
-                                    final Map<String, String> parameters) {
+            @Override
+            public Element getElement(final NodeList nodes,
+                                      final Map<String, String> parameters) {
                 final String type = parameters.get(SerialData.SAVED_TYPE);
                 Element el = null;
                 if (type != null) {
@@ -2085,9 +2277,9 @@ public final class VMSXML extends XML {
     /** Returns function that gets the node that belongs to the paremeters. */
     protected VirtualHardwareComparator getParallelDataComparator() {
         return new VirtualHardwareComparator() {
-            @Override public Element getElement(
-                                    final NodeList nodes,
-                                    final Map<String, String> parameters) {
+            @Override
+            public Element getElement(final NodeList nodes,
+                                      final Map<String, String> parameters) {
                 final String type = parameters.get(ParallelData.SAVED_TYPE);
                 Element el = null;
                 if (type != null) {
@@ -2107,9 +2299,9 @@ public final class VMSXML extends XML {
     /** Returns function that gets the node that belongs to the paremeters. */
     protected VirtualHardwareComparator getVideoDataComparator() {
         return new VirtualHardwareComparator() {
-            @Override public Element getElement(
-                                    final NodeList nodes,
-                                    final Map<String, String> parameters) {
+            @Override
+            public Element getElement(final NodeList nodes,
+                                      final Map<String, String> parameters) {
                 Element el = null;
                 final String modelType = parameters.get(
                                                 VideoData.SAVED_MODEL_TYPE);
@@ -2125,7 +2317,6 @@ public final class VMSXML extends XML {
             }
         };
     }
-
 
     /** Class that holds data about virtual disks. */
     public static final class DiskData extends HardwareData {
@@ -2254,6 +2445,52 @@ public final class VMSXML extends XML {
         /** Returns whether the disk is read only. */
         boolean isShareable() {
             return shareable;
+        }
+    }
+
+    /** Class that holds data about virtual filesystems. */
+    public static final class FilesystemData extends HardwareData {
+        /** Type: mount */
+        private final String type;
+        /** Source dir. */
+        private final String sourceDir;
+        /** Target dir: / */
+        private final String targetDir;
+        /** Type. */
+        public static final String TYPE = "type";
+        /** Source dir string. */
+        public static final String SOURCE_DIR = "source_dir";
+        /** Target dir string. */
+        public static final String TARGET_DIR = "target_dir";
+        /** Saved target dir string. */
+        public static final String SAVED_TARGET_DIR = "saved_target_dir";
+
+        /** Creates new FilesysmteData object. */
+        public FilesystemData(final String type,
+                              final String sourceDir,
+                              final String targetDir) {
+            super();
+            this.type = type;
+            setValue(TYPE, type);
+            this.sourceDir = sourceDir;
+            setValue(SOURCE_DIR, sourceDir);
+            this.targetDir = targetDir;
+            setValue(TARGET_DIR, targetDir);
+        }
+
+        /** Returns type. */
+        public String getType() {
+            return type;
+        }
+
+        /** Returns source dir. */
+        public String getSourceDir() {
+            return sourceDir;
+        }
+
+        /** Returns target dir. */
+        public String getTargetDir() {
+            return targetDir;
         }
     }
 

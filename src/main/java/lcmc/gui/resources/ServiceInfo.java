@@ -26,7 +26,7 @@ import lcmc.gui.ClusterBrowser;
 import lcmc.data.Host;
 import lcmc.data.HostLocation;
 import lcmc.data.ResourceAgent;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 
 import java.awt.geom.Point2D;
 import lcmc.data.resources.Service;
@@ -45,8 +45,10 @@ import lcmc.utilities.ButtonCallback;
 import lcmc.utilities.MyMenuItem;
 import lcmc.utilities.MyList;
 import lcmc.utilities.MyListModel;
+import lcmc.utilities.WidgetListener;
 import lcmc.gui.SpringUtilities;
 import lcmc.gui.dialog.pacemaker.ServiceLogs;
+import lcmc.gui.dialog.EditConfig;
 
 import java.awt.Color;
 import java.awt.event.MouseListener;
@@ -80,7 +82,6 @@ import javax.swing.SwingUtilities;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.event.DocumentListener;
 import javax.swing.event.DocumentEvent;
-import javax.swing.JMenu;
 import javax.swing.JMenuBar;
 import javax.swing.JScrollPane;
 import javax.swing.JRadioButton;
@@ -101,13 +102,13 @@ import java.util.concurrent.locks.Lock;
  */
 public class ServiceInfo extends EditableInfo {
     /** A map from host to the combobox with scores. */
-    private final Map<HostInfo, GuiComboBox> scoreComboBoxHash =
-                                          new HashMap<HostInfo, GuiComboBox>();
+    private final Map<HostInfo, Widget> scoreComboBoxHash =
+                                          new HashMap<HostInfo, Widget>();
     /** A map from host to stored score. */
     private final Map<HostInfo, HostLocation> savedHostLocations =
                                          new HashMap<HostInfo, HostLocation>();
     /** A combobox with pingd constraint. */
-    private GuiComboBox pingComboBox = null;
+    private Widget pingComboBox = null;
     /** Saved ping constraint. */
     private String savedPingOperation = null;
     /** Saved meta attrs id. */
@@ -122,11 +123,11 @@ public class ServiceInfo extends EditableInfo {
     /** Whether id-ref for meta-attributes is used. */
     private ServiceInfo savedMetaAttrInfoRef = null;
     /** Combo box with same as operations option. */
-    private GuiComboBox sameAsMetaAttrsCB = null;
+    private Widget sameAsMetaAttrsWi = null;
     /** Whether id-ref for operations is used. */
     private ServiceInfo savedOperationIdRef = null;
     /** Combo box with same as operations option. */
-    private GuiComboBox sameAsOperationsCB = null;
+    private Widget sameAsOperationsWi = null;
     /** Saved operations lock. */
     private final Lock mSavedOperationsLock = new ReentrantLock();
     /** Operations combo box hash lock. */
@@ -139,8 +140,8 @@ public class ServiceInfo extends EditableInfo {
     private final Lock mOperationsComboBoxHashWriteLock =
                                        mOperationsComboBoxHashLock.writeLock();
     /** A map from operation to its combo box. */
-    private final MultiKeyMap<String, GuiComboBox> operationsComboBoxHash =
-                                        new MultiKeyMap<String, GuiComboBox>();
+    private final MultiKeyMap<String, Widget> operationsComboBoxHash =
+                                        new MultiKeyMap<String, Widget>();
     /** Cache for the info panel. */
     private JComponent infoPanel = null;
     /** Group info object of the group this service is in or null, if it is
@@ -153,7 +154,7 @@ public class ServiceInfo extends EditableInfo {
      * etc. */
     private final ResourceAgent resourceAgent;
     /** Radio buttons for clone/master/slave primitive resources. */
-    private GuiComboBox typeRadioGroup;
+    private Widget typeRadioGroup;
     /** Default values item in the "same as" scrolling list in meta
         attributes.*/
     private static final String META_ATTRS_DEFAULT_VALUES_TEXT =
@@ -171,10 +172,10 @@ public class ServiceInfo extends EditableInfo {
     /** Master / Slave type string. */
     static final String MASTER_SLAVE_TYPE_STRING = "Master/Slave";
     /** Manage by CRM icon. */
-    private static final ImageIcon MANAGE_BY_CRM_ICON = Tools.createImageIcon(
+    static final ImageIcon MANAGE_BY_CRM_ICON = Tools.createImageIcon(
                   Tools.getDefault("ServiceInfo.ManageByCRMIcon"));
     /** Don't Manage by CRM icon. */
-    private static final ImageIcon UNMANAGE_BY_CRM_ICON = Tools.createImageIcon(
+    static final ImageIcon UNMANAGE_BY_CRM_ICON = Tools.createImageIcon(
                  Tools.getDefault("ServiceInfo.UnmanageByCRMIcon"));
     /** Unmanage service icon. */
     private static final ImageIcon UNMANAGE_ICON = Tools.createImageIcon(
@@ -204,15 +205,15 @@ public class ServiceInfo extends EditableInfo {
                            Tools.createImageIcon(Tools.getDefault(
                               "ServiceInfo.ServiceStoppedFailedIconSmall"));
     /** Running service icon. */
-    private static final ImageIcon SERVICE_RUNNING_ICON =
-        Tools.createImageIcon(
-                Tools.getDefault("HeartbeatGraph.ServiceRunningIcon"));
+    static final ImageIcon SERVICE_RUNNING_ICON =
+                Tools.createImageIcon(
+                        Tools.getDefault("HeartbeatGraph.ServiceRunningIcon"));
     /** Not running service icon. */
     private static final ImageIcon SERVICE_STOPPED_ICON =
             Tools.createImageIcon(
                         Tools.getDefault("HeartbeatGraph.ServiceStoppedIcon"));
     /** Start service icon. */
-    private static final ImageIcon START_ICON = SERVICE_RUNNING_ICON;
+    static final ImageIcon START_ICON = SERVICE_RUNNING_ICON;
     /** Stop service icon. */
     static final ImageIcon STOP_ICON  = SERVICE_STOPPED_ICON;
     /** Migrate icon. */
@@ -304,12 +305,14 @@ public class ServiceInfo extends EditableInfo {
      * TODO: this id is used for stored position info, should be named
      * differently.
      */
-    @Override public String getId() {
+    @Override
+    public String getId() {
         return getService().getHeartbeatId();
     }
 
     /** Returns browser object of this info. */
-    @Override protected ClusterBrowser getBrowser() {
+    @Override
+    protected ClusterBrowser getBrowser() {
         return (ClusterBrowser) super.getBrowser();
     }
 
@@ -329,8 +332,9 @@ public class ServiceInfo extends EditableInfo {
      * parameters will be checked only in the cache. This is good if only
      * one value is changed and we don't want to check everything.
      */
-    @Override boolean checkResourceFieldsCorrect(final String param,
-                                                 final String[] params) {
+    @Override
+    boolean checkResourceFieldsCorrect(final String param,
+                                       final String[] params) {
         return checkResourceFieldsCorrect(param, params, false, false, false);
     }
 
@@ -387,13 +391,13 @@ public class ServiceInfo extends EditableInfo {
             for (Host host : getBrowser().getClusterHosts()) {
                 final HostInfo hi = host.getBrowser().getHostInfo();
                 /* at least one "eq" */
-                final GuiComboBox cb = scoreComboBoxHash.get(hi);
-                if (cb != null) {
-                    final JLabel label = cb.getLabel();
+                final Widget wi = scoreComboBoxHash.get(hi);
+                if (wi != null) {
+                    final JLabel label = wi.getLabel();
                     if (label != null) {
                         final String op = getOpFromLabel(hi.getName(),
                                                          label.getText());
-                        if (cb.getValue() == null || "eq".equals(op)) {
+                        if (wi.getValue() == null || "eq".equals(op)) {
                             on = true;
                             break;
                         }
@@ -412,8 +416,9 @@ public class ServiceInfo extends EditableInfo {
      * have changed. If param is null, only param will be checked,
      * otherwise all parameters will be checked.
      */
-    @Override public boolean checkResourceFieldsChanged(final String param,
-                                                        final String[] params) {
+    @Override
+    public boolean checkResourceFieldsChanged(final String param,
+                                              final String[] params) {
         return checkResourceFieldsChanged(param, params, false, false, false);
     }
 
@@ -451,11 +456,11 @@ public class ServiceInfo extends EditableInfo {
         if (params != null) {
             for (String otherParam : params) {
                 if (isMetaAttr(otherParam)) {
-                    final GuiComboBox cb = paramComboBoxGet(otherParam, null);
-                    if (cb == null) {
+                    final Widget wi = getWidget(otherParam, null);
+                    if (wi == null) {
                         continue;
                     }
-                    final Object newValue = cb.getValue();
+                    final Object newValue = wi.getValue();
                     final Object defaultValue = getParamDefault(otherParam);
                     if (!Tools.areEqual(newValue, defaultValue)) {
                         allMetaAttrsAreDefaultValues = false;
@@ -514,39 +519,39 @@ public class ServiceInfo extends EditableInfo {
                            || cl.equals(ResourceAgent.LSB_CLASS))) {
             /* in old style resources don't show all the textfields */
             boolean visible = false;
-            GuiComboBox cb = null;
+            Widget wi = null;
             for (int i = params.length - 1; i >= 0; i--) {
-                final GuiComboBox prevCB = paramComboBoxGet(params[i],
-                                                            null);
-                if (prevCB == null) {
+                final Widget prevWi = getWidget(params[i], null);
+                if (prevWi == null) {
                     continue;
                 }
-                if (!visible && !prevCB.getStringValue().equals("")) {
+                if (!visible && !prevWi.getStringValue().equals("")) {
                     visible = true;
                 }
-                if (cb != null && cb.isVisible() != visible) {
+                if (wi != null && wi.isVisible() != visible) {
                     final boolean v = visible;
-                    final GuiComboBox c = cb;
+                    final Widget c = wi;
                     SwingUtilities.invokeLater(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             c.setVisible(v);
                             getLabel(c).setVisible(v);
                         }
                     });
                 }
-                cb = prevCB;
+                wi = prevWi;
             }
         }
 
         /* id-refs */
-        if (sameAsMetaAttrsCB != null) {
-            final Info info = (Info) sameAsMetaAttrsCB.getValue();
+        if (sameAsMetaAttrsWi != null) {
+            final Info info = (Info) sameAsMetaAttrsWi.getValue();
             final boolean defaultValues =
                     info != null
                     && META_ATTRS_DEFAULT_VALUES_TEXT.equals(info.toString());
             final boolean nothingSelected =
                       info == null
-                      || GuiComboBox.NOTHING_SELECTED.equals(info.toString());
+                      || Widget.NOTHING_SELECTED.equals(info.toString());
             if (!nothingSelected
                 && !defaultValues
                 && info != savedMetaAttrInfoRef) {
@@ -559,23 +564,15 @@ public class ServiceInfo extends EditableInfo {
                 if (savedMetaAttrInfoRef == null
                     && defaultValues != allMetaAttrsAreDefaultValues) {
                     if (allMetaAttrsAreDefaultValues) {
-                        SwingUtilities.invokeLater(new Runnable() {
-                            @Override public void run() {
-                                sameAsMetaAttrsCB.setValue(
+                        sameAsMetaAttrsWi.setValueNoListeners(
                                                META_ATTRS_DEFAULT_VALUES_TEXT);
-                            }
-                        });
                     } else {
-                        SwingUtilities.invokeLater(new Runnable() {
-                            @Override public void run() {
-                                sameAsMetaAttrsCB.setValue(
-                                                 GuiComboBox.NOTHING_SELECTED);
-                            }
-                        });
+                        sameAsMetaAttrsWi.setValueNoListeners(
+                                                     Widget.NOTHING_SELECTED);
                     }
                 }
             }
-            sameAsMetaAttrsCB.processAccessMode();
+            sameAsMetaAttrsWi.processAccessMode();
         }
         if (!fromServicesInfo) {
             final ServicesInfo sis = getBrowser().getServicesInfo();
@@ -655,7 +652,7 @@ public class ServiceInfo extends EditableInfo {
                     }
                 }
                 if (infoPanelOk) {
-                    final GuiComboBox cb = paramComboBoxGet(param, null);
+                    final Widget wi = getWidget(param, null);
                     final boolean haveChanged =
                        !Tools.areEqual(value, oldValue)
                        || !Tools.areEqual(defaultValue,
@@ -666,29 +663,29 @@ public class ServiceInfo extends EditableInfo {
                         /* set default value, because it can change in
                          * rsc_defaults. */
                         getResource().setDefaultValue(param, defaultValue);
-                        if (cb != null && metaAttrInfoRef == null) {
-                            cb.setValue(value);
+                        if (wi != null && metaAttrInfoRef == null) {
+                            wi.setValue(value);
                         }
                     }
                 }
             }
             if (!Tools.areEqual(metaAttrInfoRef, savedMetaAttrInfoRef)) {
                 savedMetaAttrInfoRef = metaAttrInfoRef;
-                if (sameAsMetaAttrsCB != null) {
+                if (sameAsMetaAttrsWi != null) {
                     if (metaAttrInfoRef == null) {
                         if (allMetaAttrsAreDefaultValues) {
                             if (!allSavedMetaAttrsAreDefaultValues) {
-                                sameAsMetaAttrsCB.setValue(
+                                sameAsMetaAttrsWi.setValue(
                                             META_ATTRS_DEFAULT_VALUES_TEXT);
                             }
                         } else {
                             if (metaAttrInfoRef != null) {
-                                sameAsMetaAttrsCB.setValue(
-                                             GuiComboBox.NOTHING_SELECTED);
+                                sameAsMetaAttrsWi.setValue(
+                                             Widget.NOTHING_SELECTED);
                             }
                         }
                     } else {
-                        sameAsMetaAttrsCB.setValue(metaAttrInfoRef);
+                        sameAsMetaAttrsWi.setValue(metaAttrInfoRef);
                     }
                 }
             }
@@ -709,16 +706,16 @@ public class ServiceInfo extends EditableInfo {
                     savedHostLocations.put(hi, hostLocation);
                 }
                 if (infoPanelOk) {
-                    final GuiComboBox cb = scoreComboBoxHash.get(hi);
-                    if (cb != null) {
+                    final Widget wi = scoreComboBoxHash.get(hi);
+                    if (wi != null) {
                         String score = null;
                         String op = null;
                         if (hostLocation != null) {
                             score = hostLocation.getScore();
                             op = hostLocation.getOperation();
                         }
-                        cb.setValue(score);
-                        final JLabel label = cb.getLabel();
+                        wi.setValue(score);
+                        final JLabel label = wi.getLabel();
                         final String text =
                                         getHostLocationLabel(hi.getName(), op);
                         label.setText(text);
@@ -745,12 +742,12 @@ public class ServiceInfo extends EditableInfo {
             savedPingOperation = pingOperation;
         }
         if (infoPanelOk) {
-            final GuiComboBox cb = pingComboBox;
-            if (cb != null) {
+            final Widget wi = pingComboBox;
+            if (wi != null) {
                 if (pingOperation == null) {
-                    cb.setValue(GuiComboBox.NOTHING_SELECTED);
+                    wi.setValue(Widget.NOTHING_SELECTED);
                 } else {
-                    cb.setValue(PING_ATTRIBUTES.get(pingOperation));
+                    wi.setValue(PING_ATTRIBUTES.get(pingOperation));
                 }
             }
         }
@@ -805,22 +802,22 @@ public class ServiceInfo extends EditableInfo {
         boolean sameAs = false;
         if (!Tools.areEqual(operationIdRef, savedOperationIdRef)) {
             savedOperationIdRef = operationIdRef;
-            if (sameAsOperationsCB != null) {
+            if (sameAsOperationsWi != null) {
                 if (operationIdRef == null) {
                     if (allAreDefaultValues) { // TODO: don't have it yet.
                         if (!allSavedAreDefaultValues) {
-                            sameAsOperationsCB.setValue(
+                            sameAsOperationsWi.setValue(
                                        OPERATIONS_DEFAULT_VALUES_TEXT);
                         }
                     } else {
                         if (savedOperationIdRef != null) {
-                            sameAsOperationsCB.setValue(
-                                       GuiComboBox.NOTHING_SELECTED);
+                            sameAsOperationsWi.setValue(
+                                       Widget.NOTHING_SELECTED);
                         }
                     }
                 } else {
                     sameAs = false;
-                    sameAsOperationsCB.setValue(operationIdRef);
+                    sameAsOperationsWi.setValue(operationIdRef);
                 }
             }
         }
@@ -847,17 +844,17 @@ public class ServiceInfo extends EditableInfo {
                         savedOperation.put(op, param, value);
                         if (infoPanelOk) {
                             mOperationsComboBoxHashReadLock.lock();
-                            final GuiComboBox cb =
-                                             operationsComboBoxHash.get(op,
-                                                                        param);
+                            final Widget wi = operationsComboBoxHash.get(op,
+                                                                         param);
                             mOperationsComboBoxHashReadLock.unlock();
                             SwingUtilities.invokeLater(new Runnable() {
-                                @Override public void run() {
-                                    cb.setEnabled(operationIdRef == null);
+                                @Override
+                                public void run() {
+                                    wi.setEnabled(operationIdRef == null);
                                 }
                             });
                             if (value != null) {
-                                cb.setValue(value);
+                                wi.setValue(value);
                             }
                         }
                     }
@@ -888,7 +885,8 @@ public class ServiceInfo extends EditableInfo {
      * Returns a name of the service with id in the parentheses.
      * It adds prefix 'new' if id is null.
      */
-    @Override public String toString() {
+    @Override
+    public String toString() {
         final StringBuilder s = new StringBuilder(30);
         final String provider = resourceAgent.getProvider();
         if (!ResourceAgent.HEARTBEAT_PROVIDER.equals(provider)
@@ -1202,7 +1200,8 @@ public class ServiceInfo extends EditableInfo {
      * Returns service icon in the menu. It can be started or stopped.
      * TODO: broken icon, not managed icon.
      */
-    @Override public ImageIcon getMenuIcon(final boolean testOnly) {
+    @Override
+    public ImageIcon getMenuIcon(final boolean testOnly) {
         if (isFailed(testOnly)) {
             if (isRunning(testOnly)) {
                 return SERVICE_RUNNING_FAILED_ICON_SMALL;
@@ -1278,10 +1277,10 @@ public class ServiceInfo extends EditableInfo {
         savedHostLocations.clear();
         for (final Host host : getBrowser().getClusterHosts()) {
             final HostInfo hi = host.getBrowser().getHostInfo();
-            final GuiComboBox cb = scoreComboBoxHash.get(hi);
-            final String score = cb.getStringValue();
+            final Widget wi = scoreComboBoxHash.get(hi);
+            final String score = wi.getStringValue();
             final String op = getOpFromLabel(hi.getName(),
-                                             cb.getLabel().getText());
+                                             wi.getLabel().getText());
             if (score == null || "".equals(score)) {
                 savedHostLocations.remove(hi);
             } else {
@@ -1316,13 +1315,13 @@ public class ServiceInfo extends EditableInfo {
                     defaultValue = "";
                 }
                 mOperationsComboBoxHashReadLock.lock();
-                final GuiComboBox cb = operationsComboBoxHash.get(op, param);
+                final Widget wi = operationsComboBoxHash.get(op, param);
                 mOperationsComboBoxHashReadLock.unlock();
-                if (cb == null) {
+                if (wi == null) {
                     continue;
                 }
                 final Object[] defaultValueE = Tools.extractUnit(defaultValue);
-                Object value = cb.getValue();
+                Object value = wi.getValue();
                 if (Tools.areEqual(value, new Object[]{"", ""})) {
                     value = new Object[]{getOpDefaultsDefault(param), null};
                 }
@@ -1338,17 +1337,17 @@ public class ServiceInfo extends EditableInfo {
                 } else if (!Tools.areEqual(value, savedOpE)) {
                     changed = true;
                 }
-                cb.setBackground(defaultValueE, savedOpE, false);
+                wi.setBackground(defaultValueE, savedOpE, false);
             }
         }
-        if (sameAsOperationsCB != null) {
-            final Info info = sameAsOperationsCBValue();
+        if (sameAsOperationsWi != null) {
+            final Info info = sameAsOperationsWiValue();
             final boolean defaultValues =
                     info != null
                     && OPERATIONS_DEFAULT_VALUES_TEXT.equals(info.toString());
             final boolean nothingSelected =
                       info == null
-                      || GuiComboBox.NOTHING_SELECTED.equals(info.toString());
+                      || Widget.NOTHING_SELECTED.equals(info.toString());
             if (!nothingSelected
                 && !defaultValues
                 && info != savedOperationIdRef) {
@@ -1362,22 +1361,24 @@ public class ServiceInfo extends EditableInfo {
                     && defaultValues != allAreDefaultValues) {
                     if (allAreDefaultValues) {
                         SwingUtilities.invokeLater(new Runnable() {
-                            @Override public void run() {
-                                sameAsOperationsCB.setValue(
+                            @Override
+                            public void run() {
+                                sameAsOperationsWi.setValueNoListeners(
                                        OPERATIONS_DEFAULT_VALUES_TEXT);
                             }
                         });
                     } else {
                         SwingUtilities.invokeLater(new Runnable() {
-                            @Override public void run() {
-                                sameAsOperationsCB.setValue(
-                                         GuiComboBox.NOTHING_SELECTED);
+                            @Override
+                            public void run() {
+                                sameAsOperationsWi.setValueNoListeners(
+                                         Widget.NOTHING_SELECTED);
                             }
                         });
                     }
                 }
             }
-            sameAsOperationsCB.processAccessMode();
+            sameAsOperationsWi.processAccessMode();
         }
         mSavedOperationsLock.unlock();
         return changed;
@@ -1390,7 +1391,7 @@ public class ServiceInfo extends EditableInfo {
         boolean changed = false;
         for (Host host : getBrowser().getClusterHosts()) {
             final HostInfo hi = host.getBrowser().getHostInfo();
-            final GuiComboBox cb = scoreComboBoxHash.get(hi);
+            final Widget wi = scoreComboBoxHash.get(hi);
             final HostLocation hlSaved = savedHostLocations.get(hi);
             String hsSaved = null;
             String opSaved = null;
@@ -1400,32 +1401,32 @@ public class ServiceInfo extends EditableInfo {
             }
             final String opSavedLabel = getHostLocationLabel(host.getName(),
                                                              opSaved);
-            if (cb == null) {
+            if (wi == null) {
                 continue;
             }
             String labelText = null;
-            if (cb.getLabel() != null) {
-                labelText = cb.getLabel().getText();
+            if (wi.getLabel() != null) {
+                labelText = wi.getLabel().getText();
             }
-            if (!Tools.areEqual(hsSaved, cb.getStringValue())
+            if (!Tools.areEqual(hsSaved, wi.getStringValue())
                 || (!Tools.areEqual(opSavedLabel, labelText)
                     && (hsSaved != null  && !"".equals(hsSaved)))) {
                 changed = true;
             }
-            cb.setBackground(getHostLocationLabel(host.getName(), "eq"),
+            wi.setBackground(getHostLocationLabel(host.getName(), "eq"),
                              null,
                              opSavedLabel,
                              hsSaved,
                              false);
         }
         /* ping */
-        final GuiComboBox pcb = pingComboBox;
-        if (pcb != null) {
+        final Widget pwi = pingComboBox;
+        if (pwi != null) {
             if (!Tools.areEqual(savedPingOperation,
-                                pcb.getValue())) {
+                                pwi.getValue())) {
                 changed = true;
             }
-            pcb.setBackground(null,
+            pwi.setBackground(null,
                               savedPingOperation,
                               false);
         }
@@ -1473,21 +1474,22 @@ public class ServiceInfo extends EditableInfo {
         }
 
         /* block devices that are the same on all hosts */
-        final Enumeration cbds =
+        final Enumeration wids =
                         getBrowser().getCommonBlockDevicesNode().children();
-        while (cbds.hasMoreElements()) {
+        while (wids.hasMoreElements()) {
             final DefaultMutableTreeNode n =
-                               (DefaultMutableTreeNode) cbds.nextElement();
-            final CommonDeviceInterface cbd =
+                               (DefaultMutableTreeNode) wids.nextElement();
+            final CommonDeviceInterface wid =
                                 (CommonDeviceInterface) n.getUserObject();
-            list.add((Info) cbd);
+            list.add((Info) wid);
         }
 
         return list.toArray(new Info[list.size()]);
     }
 
     /** Selects the node in the menu and reloads everything underneath. */
-    @Override public void selectMyself() {
+    @Override
+    public void selectMyself() {
         super.selectMyself();
         final DefaultMutableTreeNode node = getNode();
         if (node != null) {
@@ -1512,12 +1514,12 @@ public class ServiceInfo extends EditableInfo {
                      ClusterBrowser.SERVICE_FIELD_WIDTH,
                      ci.getSameAsFields(savedMAIdRef));
         if (!ci.getService().isNew()) {
-            ci.paramComboBoxGet(GUI_ID, null).setEnabled(false);
+            ci.getWidget(GUI_ID, null).setEnabled(false);
         }
         for (final String param : params) {
             if (ci.isMetaAttr(param)) {
-                final GuiComboBox cb = ci.paramComboBoxGet(param, null);
-                cb.setEnabled(savedMAIdRef == null);
+                final Widget wi = ci.getWidget(param, null);
+                wi.setEnabled(savedMAIdRef == null);
             }
         }
 
@@ -1566,8 +1568,8 @@ public class ServiceInfo extends EditableInfo {
             abbreviations.put("I", CRMXML.INFINITY_STRING);
             abbreviations.put("a", "ALWAYS");
             abbreviations.put("n", "NEVER");
-            final GuiComboBox cb =
-                new GuiComboBox(null,
+            final Widget wi =
+                     new Widget(null,
                                 new String[]{null,
                                              "0",
                                              "2",
@@ -1584,28 +1586,28 @@ public class ServiceInfo extends EditableInfo {
                                 abbreviations,
                                 new AccessMode(ConfigData.AccessType.ADMIN,
                                                false));
-            cb.setEditable(true);
-            final GuiComboBox prevCB = scoreComboBoxHash.get(hi);
-            scoreComboBoxHash.put(hi, cb);
+            wi.setEditable(true);
+            final Widget prevWi = scoreComboBoxHash.get(hi);
+            scoreComboBoxHash.put(hi, wi);
 
             /* set selected host scores in the combo box from
              * savedHostLocations */
-            if (prevCB == null) {
+            if (prevWi == null) {
                 final HostLocation hl = savedHostLocations.get(hi);
                 String hsSaved = null;
                 if (hl != null) {
                     hsSaved = hl.getScore();
                 }
-                cb.setValue(hsSaved);
+                wi.setValue(hsSaved);
             } else {
-                cb.setValue(prevCB.getValue());
+                wi.setValue(prevWi.getValue());
             }
         }
 
         /* host score combo boxes */
         for (Host host : getBrowser().getClusterHosts()) {
             final HostInfo hi = host.getBrowser().getHostInfo();
-            final GuiComboBox cb = scoreComboBoxHash.get(hi);
+            final Widget wi = scoreComboBoxHash.get(hi);
             String op = null;
             final HostLocation hl = savedHostLocations.get(hi);
             if (hl != null) {
@@ -1616,19 +1618,24 @@ public class ServiceInfo extends EditableInfo {
             final String onText = getHostLocationLabel(hi.getName(), "eq");
             final String notOnText = getHostLocationLabel(hi.getName(), "ne");
             label.addMouseListener(new MouseListener() {
-                @Override public final void mouseClicked(final MouseEvent e) {
+                @Override
+                public final void mouseClicked(final MouseEvent e) {
                     /* do nothing */
                 }
-                @Override public final void mouseEntered(final MouseEvent e) {
+                @Override
+                public final void mouseEntered(final MouseEvent e) {
                     /* do nothing */
                 }
-                @Override public final void mouseExited(final MouseEvent e) {
+                @Override
+                public final void mouseExited(final MouseEvent e) {
                     /* do nothing */
                 }
-                @Override public final void mousePressed(final MouseEvent e) {
+                @Override
+                public final void mousePressed(final MouseEvent e) {
                     final String currentText = label.getText();
                     SwingUtilities.invokeLater(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             if (currentText.equals(onText)) {
                                 label.setText(notOnText);
                             } else if (currentText.equals(notOnText)) {
@@ -1642,14 +1649,15 @@ public class ServiceInfo extends EditableInfo {
                         }
                     });
                 }
-                @Override public final void mouseReleased(final MouseEvent e) {
+                @Override
+                public final void mouseReleased(final MouseEvent e) {
                     /* do nothing */
                 }
             });
-            cb.setLabel(label, "");
+            wi.setLabel(label, "");
             addField(panel,
                      label,
-                     cb,
+                     wi,
                      leftWidth,
                      rightWidth,
                      0);
@@ -1670,16 +1678,16 @@ public class ServiceInfo extends EditableInfo {
         int rows = 0;
         final JLabel pingLabel = new JLabel("pingd");
         String savedPO = null;
-        final GuiComboBox prevCB = pingComboBox;
-        if (prevCB == null) {
+        final Widget prevWi = pingComboBox;
+        if (prevWi == null) {
             savedPO = savedPingOperation;
         } else {
-            savedPO = prevCB.getStringValue();
+            savedPO = prevWi.getStringValue();
         }
-        final GuiComboBox pingCB =
-          new GuiComboBox(savedPO,
+        final Widget pingWi =
+               new Widget(savedPO,
                           new StringInfo[]{new StringInfo(
-                                             GuiComboBox.NOTHING_SELECTED,
+                                             Widget.NOTHING_SELECTED,
                                              null,
                                              getBrowser()),
                                            new StringInfo(
@@ -1697,13 +1705,13 @@ public class ServiceInfo extends EditableInfo {
                           null, /* abbreviations */
                           new AccessMode(ConfigData.AccessType.ADMIN,
                                          false));
-        addField(panel, pingLabel, pingCB, leftWidth, rightWidth, 0);
-        pingCB.setLabel(pingLabel,
+        addField(panel, pingLabel, pingWi, leftWidth, rightWidth, 0);
+        pingWi.setLabel(pingLabel,
                         Tools.getString("ServiceInfo.PingdToolTip"));
         if (resourceAgent.isPingService() && savedPingOperation == null) {
-            pingCB.setEnabled(false);
+            pingWi.setEnabled(false);
         }
-        pingComboBox = pingCB;
+        pingComboBox = pingWi;
         rows++;
         return rows;
     }
@@ -1735,11 +1743,11 @@ public class ServiceInfo extends EditableInfo {
      * values.
      */
     private void setMetaAttrsSameAs(final Info info) {
-        if (sameAsMetaAttrsCB == null || info == null) {
+        if (sameAsMetaAttrsWi == null || info == null) {
             return;
         }
         boolean nothingSelected = false;
-        if (GuiComboBox.NOTHING_SELECTED.equals(info.toString())) {
+        if (Widget.NOTHING_SELECTED.equals(info.toString())) {
             nothingSelected = true;
         }
         boolean sameAs = true;
@@ -1756,15 +1764,15 @@ public class ServiceInfo extends EditableInfo {
                 if (defaultValue == null) {
                     defaultValue = getParamDefault(param);
                 }
-                final GuiComboBox cb = paramComboBoxGet(param, null);
-                if (cb == null) {
+                final Widget wi = getWidget(param, null);
+                if (wi == null) {
                     continue;
                 }
-                Object oldValue = cb.getValue();
+                Object oldValue = wi.getValue();
                 if (oldValue == null) {
                     oldValue = defaultValue;
                 }
-                cb.setEnabled(!sameAs || nothingSelected);
+                wi.setEnabled(!sameAs || nothingSelected);
                 if (!nothingSelected) {
                     if (sameAs) {
                         /* same as some other service */
@@ -1774,9 +1782,10 @@ public class ServiceInfo extends EditableInfo {
                     final String newValue = defaultValue;
                     if (!Tools.areEqual(oldValue, newValue)) {
                         SwingUtilities.invokeLater(new Runnable() {
-                            @Override public void run() {
-                                if (cb != null) {
-                                    cb.setValue(newValue);
+                            @Override
+                            public void run() {
+                                if (wi != null) {
+                                    wi.setValue(newValue);
                                 }
                             }
                         });
@@ -1822,7 +1831,7 @@ public class ServiceInfo extends EditableInfo {
      */
     private Info[] getSameServicesMetaAttrs() {
         final List<Info> sl = new ArrayList<Info>();
-        sl.add(new StringInfo(GuiComboBox.NOTHING_SELECTED,
+        sl.add(new StringInfo(Widget.NOTHING_SELECTED,
                               null,
                               getBrowser()));
         sl.add(new StringInfo(META_ATTRS_DEFAULT_VALUES_TEXT,
@@ -1877,7 +1886,7 @@ public class ServiceInfo extends EditableInfo {
      */
     private Info[] getSameServicesOperations() {
         final List<Info> sl = new ArrayList<Info>();
-        sl.add(new StringInfo(GuiComboBox.NOTHING_SELECTED,
+        sl.add(new StringInfo(Widget.NOTHING_SELECTED,
                               null,
                               getBrowser()));
         sl.add(new StringInfo(OPERATIONS_DEFAULT_VALUES_TEXT,
@@ -1933,12 +1942,11 @@ public class ServiceInfo extends EditableInfo {
      * values.
      */
     private void setOperationsSameAs(final Info info) {
-        if (sameAsOperationsCB == null) {
+        if (sameAsOperationsWi == null) {
             return;
         }
         boolean nothingSelected = false;
-        if (info == null
-            || GuiComboBox.NOTHING_SELECTED.equals(info.toString())) {
+        if (info == null || Widget.NOTHING_SELECTED.equals(info.toString())) {
             nothingSelected = true;
         }
         boolean sameAs = true;
@@ -1958,10 +1966,10 @@ public class ServiceInfo extends EditableInfo {
                     defaultValue = "";
                 }
                 mOperationsComboBoxHashReadLock.lock();
-                final GuiComboBox cb = operationsComboBoxHash.get(op, param);
+                final Widget wi = operationsComboBoxHash.get(op, param);
                 mOperationsComboBoxHashReadLock.unlock();
-                final Object oldValue = cb.getValue();
-                cb.setEnabled(!sameAs || nothingSelected);
+                final Object oldValue = wi.getValue();
+                wi.setEnabled(!sameAs || nothingSelected);
                 if (!nothingSelected) {
                     if (sameAs) {
                         /* same as some other service */
@@ -1972,13 +1980,9 @@ public class ServiceInfo extends EditableInfo {
                     final String newValue = defaultValue;
                     if (!Tools.areEqual(oldValue,
                                         Tools.extractUnit(newValue))) {
-                        SwingUtilities.invokeLater(new Runnable() {
-                            @Override public void run() {
-                                if (cb != null) {
-                                    cb.setValue(newValue);
-                                }
-                            }
-                        });
+                        if (wi != null) {
+                            wi.setValueNoListeners(newValue);
+                        }
                     }
                 }
             }
@@ -1998,25 +2002,25 @@ public class ServiceInfo extends EditableInfo {
         if (savedOpIdRef != null) {
             defaultOpIdRef = savedOpIdRef.toString();
         }
-        sameAsOperationsCB = new GuiComboBox(defaultOpIdRef,
-                                             getSameServicesOperations(),
-                                             null, /* units */
-                                             null, /* type */
-                                             null, /* regexp */
-                                             rightWidth,
-                                             null, /* abbrv */
-                                             new AccessMode(
+        sameAsOperationsWi = new Widget(defaultOpIdRef,
+                                        getSameServicesOperations(),
+                                        null, /* units */
+                                        null, /* type */
+                                        null, /* regexp */
+                                        rightWidth,
+                                        null, /* abbrv */
+                                        new AccessMode(
                                                   ConfigData.AccessType.ADMIN,
                                                   false));
-        sameAsOperationsCB.setToolTipText(defaultOpIdRef);
+        sameAsOperationsWi.setToolTipText(defaultOpIdRef);
         final JLabel label = new JLabel(Tools.getString(
                                            "ClusterBrowser.OperationsSameAs"));
-        sameAsOperationsCB.setLabel(label, "");
+        sameAsOperationsWi.setLabel(label, "");
         final JPanel saPanel = new JPanel(new SpringLayout());
         saPanel.setBackground(ClusterBrowser.BUTTON_PANEL_BACKGROUND);
         addField(saPanel,
                  label,
-                 sameAsOperationsCB,
+                 sameAsOperationsWi,
                  leftWidth,
                  rightWidth,
                  0);
@@ -2044,9 +2048,9 @@ public class ServiceInfo extends EditableInfo {
                 if (ClusterBrowser.HB_OP_IGNORE_DEFAULT.contains(op)) {
                     defaultValue = "";
                 }
-                GuiComboBox.Type type;
+                Widget.Type type;
                 final String regexp = "^-?\\d*$";
-                type = GuiComboBox.Type.TEXTFIELDWITHUNIT;
+                type = Widget.Type.TEXTFIELDWITHUNIT;
                 // TODO: old style resources
                 if (defaultValue == null) {
                     defaultValue = "0";
@@ -2054,10 +2058,9 @@ public class ServiceInfo extends EditableInfo {
                 String savedValue = null;
                 mOperationsComboBoxHashWriteLock.lock();
                 try {
-                    final GuiComboBox prevCB =
-                                        operationsComboBoxHash.get(op, param);
-                    if (prevCB != null) {
-                        savedValue = prevCB.getStringValue();
+                    final Widget prevWi = operationsComboBoxHash.get(op, param);
+                    if (prevWi != null) {
+                        savedValue = prevWi.getStringValue();
                     }
                 } finally {
                     mOperationsComboBoxHashWriteLock.unlock();
@@ -2078,30 +2081,29 @@ public class ServiceInfo extends EditableInfo {
                 if (savedValue != null) {
                     defaultValue = savedValue;
                 }
-                final GuiComboBox cb = new GuiComboBox(
-                                                 defaultValue,
-                                                 null, /* items */
-                                                 getUnits(),
-                                                 type,
-                                                 regexp,
-                                                 rightWidth,
-                                                 null, /* abbrv */
-                                                 new AccessMode(
+                final Widget wi = new Widget(defaultValue,
+                                             null, /* items */
+                                             getUnits(),
+                                             type,
+                                             regexp,
+                                             rightWidth,
+                                             null, /* abbrv */
+                                             new AccessMode(
                                                    ConfigData.AccessType.ADMIN,
                                                    false));
-                cb.setEnabled(savedOpIdRef == null);
+                wi.setEnabled(savedOpIdRef == null);
 
                 mOperationsComboBoxHashWriteLock.lock();
                 try {
-                    operationsComboBoxHash.put(op, param, cb);
+                    operationsComboBoxHash.put(op, param, wi);
                 } finally {
                     mOperationsComboBoxHashWriteLock.unlock();
                 }
                 rows++;
-                final JLabel cbLabel = new JLabel(Tools.ucfirst(op)
+                final JLabel wiLabel = new JLabel(Tools.ucfirst(op)
                                                   + " / "
                                                   + Tools.ucfirst(param));
-                cb.setLabel(cbLabel, "");
+                wi.setLabel(wiLabel, "");
                 JPanel panel;
                 if (getBrowser().isCRMOperationAdvanced(op, param)) {
                     panel = advancedOpPanel;
@@ -2111,8 +2113,8 @@ public class ServiceInfo extends EditableInfo {
                     normalRows++;
                 }
                 addField(panel,
-                         cbLabel,
-                         cb,
+                         wiLabel,
+                         wi,
                          leftWidth,
                          rightWidth,
                          0);
@@ -2129,45 +2131,40 @@ public class ServiceInfo extends EditableInfo {
         sectionPanel.add(advancedOpPanel);
         mSavedOperationsLock.unlock();
         if (allAreDefaultValues && savedOpIdRef == null) {
-            sameAsOperationsCB.setValue(OPERATIONS_DEFAULT_VALUES_TEXT);
+            sameAsOperationsWi.setValue(OPERATIONS_DEFAULT_VALUES_TEXT);
         }
-        sameAsOperationsCB.addListeners(
-            new ItemListener() {
-                @Override public void itemStateChanged(final ItemEvent e) {
-                    if (e.getStateChange() == ItemEvent.SELECTED) {
-                        final Thread thread = new Thread(new Runnable() {
-                            @Override public void run() {
-                                final Info info = sameAsOperationsCBValue();
+        sameAsOperationsWi.addListeners(
+                        new WidgetListener() {
+                            @Override
+                            public void check(final Object value) {
+                                final Info info = sameAsOperationsWiValue();
                                 setOperationsSameAs(info);
                                 final String[] params = getParametersFromXML();
                                 setApplyButtons(CACHED_FIELD, params);
                                 SwingUtilities.invokeLater(new Runnable() {
-                                    @Override public void run() {
+                                    @Override
+                                    public void run() {
                                         if (info != null) {
-                                            sameAsOperationsCB.setToolTipText(
+                                            sameAsOperationsWi.setToolTipText(
                                                               info.toString());
                                         }
                                     }
                                 });
-                            }
-                        });
-                        thread.start();
-                    }
                 }
-            },
-            null
-        );
+            });
         optionsPanel.add(sectionPanel);
     }
 
     /** Returns parameters. */
-    @Override public String[] getParametersFromXML() {
+    @Override
+    public String[] getParametersFromXML() {
         final CRMXML crmXML = getBrowser().getCRMXML();
         return crmXML.getParameters(resourceAgent, getService().isMaster());
     }
 
     /** Returns the regexp of the parameter. */
-    @Override protected String getParamRegexp(final String param) {
+    @Override
+    protected String getParamRegexp(final String param) {
         if (isInteger(param)) {
             return "^((-?\\d*|(-|\\+)?" + CRMXML.INFINITY_STRING
                    + "|" + CRMXML.DISABLED_STRING
@@ -2177,8 +2174,8 @@ public class ServiceInfo extends EditableInfo {
     }
 
     /** Returns true if the value of the parameter is ok. */
-    @Override protected boolean checkParam(final String param,
-                                           final String newValue) {
+    @Override
+    protected boolean checkParam(final String param, final String newValue) {
         if (param.equals("ip")
             && newValue != null
             && !Tools.isIp(newValue)) {
@@ -2189,7 +2186,8 @@ public class ServiceInfo extends EditableInfo {
     }
 
     /** Returns default value for specified parameter. */
-    @Override public String getParamDefault(final String param) {
+    @Override
+    public String getParamDefault(final String param) {
         if (isMetaAttr(param)) {
             final String paramDefault = getBrowser().getRscDefaultsInfo()
                                                  .getResource().getValue(param);
@@ -2202,7 +2200,8 @@ public class ServiceInfo extends EditableInfo {
     }
 
     /** Returns saved value for specified parameter. */
-    @Override protected String getParamSaved(final String param) {
+    @Override
+    protected String getParamSaved(final String param) {
         final ClusterStatus clStatus = getBrowser().getClusterStatus();
         if (isMetaAttr(param)) {
             final String crmId = getService().getHeartbeatId();
@@ -2224,7 +2223,9 @@ public class ServiceInfo extends EditableInfo {
                                     param,
                                     false);
             if (value == null) {
-                value = getParamPreferred(param);
+                if (getService().isNew()) {
+                    value = getParamPreferred(param);
+                }
                 if (value == null) {
                     return getParamDefault(param);
                 }
@@ -2236,7 +2237,8 @@ public class ServiceInfo extends EditableInfo {
     /**
      * Returns preferred value for specified parameter.
      */
-    @Override protected String getParamPreferred(final String param) {
+    @Override
+    protected String getParamPreferred(final String param) {
         final CRMXML crmXML = getBrowser().getCRMXML();
         return crmXML.getParamPreferred(resourceAgent, param);
     }
@@ -2244,7 +2246,8 @@ public class ServiceInfo extends EditableInfo {
     /**
      * Returns possible choices for drop down lists.
      */
-    @Override protected Object[] getParamPossibleChoices(final String param) {
+    @Override
+    protected Object[] getParamPossibleChoices(final String param) {
         final CRMXML crmXML = getBrowser().getCRMXML();
         if (isCheckBox(param)) {
             return crmXML.getCheckBoxChoices(resourceAgent, param);
@@ -2259,7 +2262,8 @@ public class ServiceInfo extends EditableInfo {
     /**
      * Returns short description of the specified parameter.
      */
-    @Override protected String getParamShortDesc(final String param) {
+    @Override
+    protected String getParamShortDesc(final String param) {
         final CRMXML crmXML = getBrowser().getCRMXML();
         return crmXML.getParamShortDesc(resourceAgent, param);
     }
@@ -2267,7 +2271,8 @@ public class ServiceInfo extends EditableInfo {
     /**
      * Returns long description of the specified parameter.
      */
-    @Override protected String getParamLongDesc(final String param) {
+    @Override
+    protected String getParamLongDesc(final String param) {
         final CRMXML crmXML = getBrowser().getCRMXML();
         return crmXML.getParamLongDesc(resourceAgent, param);
     }
@@ -2275,19 +2280,22 @@ public class ServiceInfo extends EditableInfo {
     /**
      * Returns section to which the specified parameter belongs.
      */
-    @Override protected String getSection(final String param) {
+    @Override
+    protected String getSection(final String param) {
         final CRMXML crmXML = getBrowser().getCRMXML();
         return crmXML.getSection(resourceAgent, param);
     }
 
     /** Returns true if the specified parameter is required. */
-    @Override protected boolean isRequired(final String param) {
+    @Override
+    protected boolean isRequired(final String param) {
         final CRMXML crmXML = getBrowser().getCRMXML();
         return crmXML.isRequired(resourceAgent, param);
     }
 
     /** Returns whether this parameter is advanced. */
-    @Override protected boolean isAdvanced(final String param) {
+    @Override
+    protected boolean isAdvanced(final String param) {
         if (!Tools.areEqual(getParamDefault(param),
                             getParamSaved(param))) {
             /* it changed, show it */
@@ -2298,17 +2306,18 @@ public class ServiceInfo extends EditableInfo {
     }
 
     /** Whether the parameter should be enabled. */
-    @Override protected final String isEnabled(final String param) {
+    @Override
+    protected final String isEnabled(final String param) {
         if (GUI_ID.equals(param) && !getResource().isNew()) {
             return "";
         }
         if (isMetaAttr(param)) {
-            final Info info = (Info) sameAsMetaAttrsCB.getValue();
+            final Info info = (Info) sameAsMetaAttrsWi.getValue();
             if (info == null) {
                 return null;
             }
             boolean nothingSelected = false;
-            if (GuiComboBox.NOTHING_SELECTED.equals(info.toString())) {
+            if (Widget.NOTHING_SELECTED.equals(info.toString())) {
                 nothingSelected = true;
             }
             boolean sameAs = true;
@@ -2325,15 +2334,15 @@ public class ServiceInfo extends EditableInfo {
     }
 
     /** Whether the parameter should be enabled only in advanced mode. */
-    @Override protected final boolean isEnabledOnlyInAdvancedMode(
-                                                         final String param) {
+    @Override
+    protected final boolean isEnabledOnlyInAdvancedMode(final String param) {
         return false;
     }
 
 
     /** Returns access type of this parameter. */
-    @Override protected ConfigData.AccessType getAccessType(
-                                                        final String param) {
+    @Override
+    protected ConfigData.AccessType getAccessType(final String param) {
         final CRMXML crmXML = getBrowser().getCRMXML();
         return crmXML.getAccessType(resourceAgent, param);
     }
@@ -2347,37 +2356,43 @@ public class ServiceInfo extends EditableInfo {
     }
 
     /** Returns true if the specified parameter is integer. */
-    @Override protected boolean isInteger(final String param) {
+    @Override
+    protected boolean isInteger(final String param) {
         final CRMXML crmXML = getBrowser().getCRMXML();
         return crmXML.isInteger(resourceAgent, param);
     }
 
     /** Returns true if the specified parameter is label. */
-    @Override protected boolean isLabel(final String param) {
+    @Override
+    protected boolean isLabel(final String param) {
         final CRMXML crmXML = getBrowser().getCRMXML();
         return crmXML.isLabel(resourceAgent, param);
     }
 
     /** Returns true if the specified parameter is of time type. */
-    @Override protected boolean isTimeType(final String param) {
+    @Override
+    protected boolean isTimeType(final String param) {
         final CRMXML crmXML = getBrowser().getCRMXML();
         return crmXML.isTimeType(resourceAgent, param);
     }
 
     /** Returns whether parameter is checkbox. */
-    @Override protected boolean isCheckBox(final String param) {
+    @Override
+    protected boolean isCheckBox(final String param) {
         final CRMXML crmXML = getBrowser().getCRMXML();
         return crmXML.isBoolean(resourceAgent, param);
     }
 
     /** Returns the type of the parameter according to the OCF. */
-    @Override protected String getParamType(final String param) {
+    @Override
+    protected String getParamType(final String param) {
         final CRMXML crmXML = getBrowser().getCRMXML();
         return crmXML.getParamType(resourceAgent, param);
     }
 
     /** Returns the type of the parameter. */
-    @Override protected GuiComboBox.Type getFieldType(final String param) {
+    @Override
+    protected Widget.Type getFieldType(final String param) {
         return resourceAgent.getFieldType(param);
     }
 
@@ -2415,7 +2430,8 @@ public class ServiceInfo extends EditableInfo {
                                                getBrowser());
             setCloneInfo(ci);
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     if (oldCI == null) {
                         getBrowser().getHeartbeatGraph()
                                     .exchangeObjectInTheVertex(ci, thisClass);
@@ -2425,11 +2441,10 @@ public class ServiceInfo extends EditableInfo {
                                                     hi,
                                                     scoreComboBoxHash.get(hi));
                         }
-                        final GuiComboBox prevCB =
-                                                paramComboBoxGet(GUI_ID, null);
-                        if (prevCB != null) {
+                        final Widget prevWi = getWidget(GUI_ID, null);
+                        if (prevWi != null) {
                             ci.getService().setId(
-                                    getName() + "_" + prevCB.getStringValue());
+                                    getName() + "_" + prevWi.getStringValue());
                         }
                     } else {
                         oldCI.removeNode();
@@ -2454,7 +2469,7 @@ public class ServiceInfo extends EditableInfo {
                             oldCINode.setUserObject(null); /* would leak
                                                               without it*/
                         }
-                        ci.getService().setId(oldCI.paramComboBoxGet(
+                        ci.getService().setId(oldCI.getWidget(
                                                GUI_ID, null).getStringValue());
                     }
                     ci.setCloneServicePanel(thisClass);
@@ -2464,7 +2479,8 @@ public class ServiceInfo extends EditableInfo {
         } else if (PRIMITIVE_TYPE_STRING.equals(value)) {
             final CloneInfo ci = getCloneInfo();
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     setPingComboBox(ci.getPingComboBox());
                     for (final HostInfo hi
                                         : ci.getScoreComboBoxHash().keySet()) {
@@ -2501,89 +2517,27 @@ public class ServiceInfo extends EditableInfo {
         final String[] params = getParametersFromXML();
         for (Host host : getBrowser().getClusterHosts()) {
             final HostInfo hi = host.getBrowser().getHostInfo();
-            final GuiComboBox cb = scoreComboBoxHash.get(hi);
-            cb.addListeners(
-                new ItemListener() {
-                    @Override public void itemStateChanged(final ItemEvent e) {
-                        if (cb.isCheckBox()
-                            || e.getStateChange() == ItemEvent.SELECTED) {
-                            final Thread thread = new Thread(new Runnable() {
-                                @Override public void run() {
+            final Widget wi = scoreComboBoxHash.get(hi);
+            wi.addListeners(new WidgetListener() {
+                                @Override
+                                public void check(final Object value) {
                                     setApplyButtons(CACHED_FIELD, params);
                                     SwingUtilities.invokeLater(
-                                    new Runnable() {
-                                        @Override public void run() {
-                                            cb.setEditable();
-                                        }
+                                        new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                wi.setEditable();
+                                            }
                                     });
                                 }
                             });
-                            thread.start();
-                        }
-                    }
-                },
-
-                new DocumentListener() {
-                    private void check() {
-                        final Thread thread = new Thread(new Runnable() {
-                            @Override public void run() {
-                                setApplyButtons(CACHED_FIELD, params);
-                            }
-                        });
-                        thread.start();
-                    }
-
-                    @Override public void insertUpdate(final DocumentEvent e) {
-                        check();
-                    }
-
-                    @Override public void removeUpdate(final DocumentEvent e) {
-                        check();
-                    }
-
-                    @Override public void changedUpdate(final DocumentEvent e) {
-                        check();
-                    }
-                }
-            );
         }
-        pingComboBox.addListeners(
-            new ItemListener() {
-                @Override public void itemStateChanged(final ItemEvent e) {
-                    if (pingComboBox.isCheckBox()
-                        || e.getStateChange() == ItemEvent.SELECTED) {
-                        final Thread thread = new Thread(new Runnable() {
-                            @Override public void run() {
-                                setApplyButtons(CACHED_FIELD, params);
-                            }
-                        });
-                        thread.start();
-                    }
-                }
-            },
-
-            new DocumentListener() {
-                private void check() {
-                    final Thread thread = new Thread(new Runnable() {
-                        @Override public void run() {
-                            setApplyButtons(CACHED_FIELD, params);
-                        }
-                    });
-                    thread.start();
-                }
-
-                @Override public void insertUpdate(final DocumentEvent e) {
-                    check();
-                }
-
-                @Override public void removeUpdate(final DocumentEvent e) {
-                    check();
-                }
-
-                @Override public void changedUpdate(final DocumentEvent e) {
-                    check();
-                }
-            });
+        pingComboBox.addListeners(new WidgetListener() {
+                                      @Override
+                                      public void check(final Object value) {
+                                          setApplyButtons(CACHED_FIELD, params);
+                                      }
+                                  });
     }
 
     /** Adds listeners for operation and parameter. */
@@ -2593,82 +2547,46 @@ public class ServiceInfo extends EditableInfo {
             return;
         }
         mOperationsComboBoxHashReadLock.lock();
-        final GuiComboBox cb = operationsComboBoxHash.get(op, param);
+        final Widget wi = operationsComboBoxHash.get(op, param);
         mOperationsComboBoxHashReadLock.unlock();
         final String[] params = getParametersFromXML();
-        cb.addListeners(
-            new ItemListener() {
-                @Override public void itemStateChanged(final ItemEvent e) {
-                    if (cb.isCheckBox()
-                        || e.getStateChange() == ItemEvent.SELECTED) {
-                        final Thread thread = new Thread(new Runnable() {
-                            @Override public void run() {
+        wi.addListeners(new WidgetListener() {
+                            @Override
+                            public void check(final Object value) {
                                 setApplyButtons(CACHED_FIELD, params);
                             }
                         });
-                        thread.start();
-                    }
-                }
-            },
-
-            new DocumentListener() {
-                private void check() {
-                    final Thread thread = new Thread(new Runnable() {
-                        @Override public void run() {
-                            setApplyButtons(CACHED_FIELD, params);
-                        }
-                    });
-                    thread.start();
-                }
-
-                @Override public void insertUpdate(final DocumentEvent e) {
-                    check();
-                }
-
-                @Override public void removeUpdate(final DocumentEvent e) {
-                    check();
-                }
-
-                @Override public void changedUpdate(final DocumentEvent e) {
-                    check();
-                }
-            }
-        );
     }
 
     /**
      * Returns "same as" fields for some sections. Currently only "meta
      * attributes".
      */
-    protected final Map<String, GuiComboBox> getSameAsFields(
+    protected final Map<String, Widget> getSameAsFields(
                                                 final Info savedMAIdRef) {
         String defaultMAIdRef = null;
         if (savedMAIdRef != null) {
             defaultMAIdRef = savedMAIdRef.toString();
         }
-        sameAsMetaAttrsCB = new GuiComboBox(defaultMAIdRef,
-                                            getSameServicesMetaAttrs(),
-                                            null, /* units */
-                                            null, /* type */
-                                            null, /* regexp */
-                                            ClusterBrowser.SERVICE_FIELD_WIDTH,
-                                            null, /* abbrv */
-                                            new AccessMode(
+        sameAsMetaAttrsWi = new Widget(defaultMAIdRef,
+                                       getSameServicesMetaAttrs(),
+                                       null, /* units */
+                                       null, /* type */
+                                       null, /* regexp */
+                                       ClusterBrowser.SERVICE_FIELD_WIDTH,
+                                       null, /* abbrv */
+                                       new AccessMode(
                                                    ConfigData.AccessType.ADMIN,
                                                    false));
-        sameAsMetaAttrsCB.setToolTipText(defaultMAIdRef);
-        final Map<String, GuiComboBox> sameAsFields =
-                                            new HashMap<String, GuiComboBox>();
-        sameAsFields.put("Meta Attributes", sameAsMetaAttrsCB);
-        sameAsMetaAttrsCB.addListeners(
-            new ItemListener() {
-                @Override public void itemStateChanged(final ItemEvent e) {
-                    if (e.getStateChange() == ItemEvent.SELECTED) {
-                        final Thread thread = new Thread(new Runnable() {
-                            @Override public void run() {
+        sameAsMetaAttrsWi.setToolTipText(defaultMAIdRef);
+        final Map<String, Widget> sameAsFields = new HashMap<String, Widget>();
+        sameAsFields.put("Meta Attributes", sameAsMetaAttrsWi);
+        sameAsMetaAttrsWi.addListeners(new WidgetListener() {
+                            @Override
+                            public void check(final Object value) {
                                 Info i = null;
                                 final Object o =
-                                      sameAsMetaAttrsCB.getValue();
+                                      sameAsMetaAttrsWi.getValue();
                                 if (o instanceof Info) {
                                     i = (Info) o;
                                 }
@@ -2678,21 +2596,16 @@ public class ServiceInfo extends EditableInfo {
                                                     getParametersFromXML();
                                 setApplyButtons(CACHED_FIELD, params);
                                 SwingUtilities.invokeLater(new Runnable() {
-                                    @Override public void run() {
+                                    @Override
+                                    public void run() {
                                         if (info != null) {
-                                            sameAsMetaAttrsCB.setToolTipText(
+                                            sameAsMetaAttrsWi.setToolTipText(
                                                               info.toString());
                                         }
                                     }
                                 });
                             }
                         });
-                        thread.start();
-                    }
-                }
-            },
-            null
-        );
         return sameAsFields;
     }
 
@@ -2702,7 +2615,13 @@ public class ServiceInfo extends EditableInfo {
     }
 
     /** Returns info panel with comboboxes for service parameters. */
-    @Override public JComponent getInfoPanel() {
+    @Override
+    public JComponent getInfoPanel() {
+        if (!getResourceAgent().isMetaDataLoaded()) {
+            final JPanel p = new JPanel();
+            p.add(new JLabel(Tools.getString("ServiceInfo.LoadingMetaData")));
+            return p;
+        }
         final CloneInfo ci = getCloneInfo();
         if (ci == null) {
             getBrowser().getHeartbeatGraph().pickInfo(this);
@@ -2720,7 +2639,8 @@ public class ServiceInfo extends EditableInfo {
             /**
              * Whether the whole thing should be enabled.
              */
-            @Override public final boolean isEnabled() {
+            @Override
+            public final boolean isEnabled() {
                 final Host dcHost = getBrowser().getDCHost();
                 if (dcHost == null) {
                     return false;
@@ -2730,7 +2650,8 @@ public class ServiceInfo extends EditableInfo {
                 }
                 return true;
             }
-            @Override public final void mouseOut() {
+            @Override
+            public final void mouseOut() {
                 if (!isEnabled()) {
                     return;
                 }
@@ -2740,7 +2661,8 @@ public class ServiceInfo extends EditableInfo {
                 getApplyButton().setToolTipText(null);
             }
 
-            @Override public final void mouseOver() {
+            @Override
+            public final void mouseOver() {
                 if (!isEnabled()) {
                     return;
                 }
@@ -2784,9 +2706,11 @@ public class ServiceInfo extends EditableInfo {
         if (!abExisted) {
             getApplyButton().addActionListener(
                 new ActionListener() {
-                    @Override public void actionPerformed(final ActionEvent e) {
+                    @Override
+                    public void actionPerformed(final ActionEvent e) {
                         final Thread thread = new Thread(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 getBrowser().clStatusLock();
                                 apply(getBrowser().getDCHost(), false);
                                 getBrowser().clStatusUnlock();
@@ -2799,9 +2723,11 @@ public class ServiceInfo extends EditableInfo {
 
             getRevertButton().addActionListener(
                 new ActionListener() {
-                    @Override public void actionPerformed(final ActionEvent e) {
+                    @Override
+                    public void actionPerformed(final ActionEvent e) {
                         final Thread thread = new Thread(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 getBrowser().clStatusLock();
                                 revert();
                                 getBrowser().clStatusUnlock();
@@ -2846,13 +2772,13 @@ public class ServiceInfo extends EditableInfo {
             }
         }
         if (!getResourceAgent().isClone() && getGroupInfo() == null) {
-            typeRadioGroup = new GuiComboBox(
+            typeRadioGroup = new Widget(
                                      defaultValue,
                                      new String[]{PRIMITIVE_TYPE_STRING,
                                                   CLONE_TYPE_STRING,
                                                   MASTER_SLAVE_TYPE_STRING},
                                      null, /* units */
-                                     GuiComboBox.Type.RADIOGROUP,
+                                     Widget.Type.RADIOGROUP,
                                      null, /* regexp */
                                      ClusterBrowser.SERVICE_LABEL_WIDTH
                                      + ClusterBrowser.SERVICE_FIELD_WIDTH,
@@ -2863,20 +2789,12 @@ public class ServiceInfo extends EditableInfo {
             if (!getService().isNew()) {
                 typeRadioGroup.setEnabled(false);
             }
-            typeRadioGroup.addListeners(new ItemListener() {
-                @Override public void itemStateChanged(final ItemEvent e) {
-                    final Thread thread = new Thread(new Runnable() {
-                        @Override public void run() {
-                            if (e.getStateChange() == ItemEvent.SELECTED) {
-                                final String value =
-                                    ((JRadioButton) e.getItem()).getText();
-                                changeType(value);
-                            }
-                        }
-                    });
-                    thread.start();
+            typeRadioGroup.addListeners(new WidgetListener() {
+                @Override
+                public void check(final Object value) {
+                    changeType(((JRadioButton) value).getText());
                 }
-            }, null);
+            });
             final JPanel tp = new JPanel();
             tp.setBackground(ClusterBrowser.PANEL_BACKGROUND);
             tp.setLayout(new BoxLayout(tp, BoxLayout.Y_AXIS));
@@ -2910,12 +2828,12 @@ public class ServiceInfo extends EditableInfo {
 
         for (final String param : params) {
             if (isMetaAttr(param)) {
-                final GuiComboBox cb = paramComboBoxGet(param, null);
-                cb.setEnabled(savedMAIdRef == null);
+                final Widget wi = getWidget(param, null);
+                wi.setEnabled(savedMAIdRef == null);
             }
         }
         if (!getService().isNew()) {
-            paramComboBoxGet(GUI_ID, null).setEnabled(false);
+            getWidget(GUI_ID, null).setEnabled(false);
         }
         if (!getResourceAgent().isGroup()
             && !getResourceAgent().isClone()) {
@@ -2941,7 +2859,8 @@ public class ServiceInfo extends EditableInfo {
         addApplyButton(buttonPanel);
         addRevertButton(buttonPanel);
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 /* invoke later on purpose  */
                 setApplyButtons(null, params);
             }
@@ -2963,7 +2882,8 @@ public class ServiceInfo extends EditableInfo {
     }
 
     /** Clears the info panel cache, forcing it to reload. */
-    @Override boolean selectAutomaticallyInTreeMenu() {
+    @Override
+    boolean selectAutomaticallyInTreeMenu() {
         return infoPanel == null;
     }
 
@@ -2993,8 +2913,8 @@ public class ServiceInfo extends EditableInfo {
         final ClusterStatus cs = getBrowser().getClusterStatus();
         for (Host host : getBrowser().getClusterHosts()) {
             final HostInfo hi = host.getBrowser().getHostInfo();
-            final GuiComboBox cb = scoreComboBoxHash.get(hi);
-            String hs = cb.getStringValue();
+            final Widget wi = scoreComboBoxHash.get(hi);
+            String hs = wi.getStringValue();
             if ("ALWAYS".equals(hs)) {
                 hs = CRMXML.INFINITY_STRING;
             } else if ("NEVER".equals(hs)) {
@@ -3008,7 +2928,7 @@ public class ServiceInfo extends EditableInfo {
                 opSaved = hlSaved.getOperation();
             }
             final String onHost = hi.getName();
-            final String op = getOpFromLabel(onHost, cb.getLabel().getText());
+            final String op = getOpFromLabel(onHost, wi.getLabel().getText());
             final HostLocation hostLoc = new HostLocation(hs, op, null, null);
             if (!hostLoc.equals(hlSaved)) {
                 String locationId = cs.getLocationId(getHeartbeatId(testOnly),
@@ -3034,10 +2954,10 @@ public class ServiceInfo extends EditableInfo {
             }
         }
         /* ping */
-        final GuiComboBox pcb = pingComboBox;
-        if (pcb != null) {
+        final Widget pwi = pingComboBox;
+        if (pwi != null) {
             String value = null;
-            final Object o = pcb.getValue();
+            final Object o = pwi.getValue();
             if (o != null) {
                 value = ((StringInfo) o).getStringValue();
             }
@@ -3097,17 +3017,16 @@ public class ServiceInfo extends EditableInfo {
                         continue;
                     }
                     mOperationsComboBoxHashReadLock.lock();
-                    final GuiComboBox cb =
-                                        operationsComboBoxHash.get(op, param);
+                    final Widget wi = operationsComboBoxHash.get(op, param);
                     mOperationsComboBoxHashReadLock.unlock();
                     String value;
-                    if (cb == null) {
+                    if (wi == null) {
                         value = "0";
                     } else {
-                        value = cb.getStringValue();
+                        value = wi.getStringValue();
                     }
                     if (value != null && !"".equals(value)) {
-                        if (cb != null && firstTime) {
+                        if (wi != null && firstTime) {
                             opHash.put("id", opId);
                             opHash.put("name", op);
                             firstTime = false;
@@ -3127,9 +3046,9 @@ public class ServiceInfo extends EditableInfo {
      */
     protected String getMetaAttrsRefId() {
         String metaAttrsRefId = null;
-        if (sameAsMetaAttrsCB != null) {
-            final Info i = (Info) sameAsMetaAttrsCB.getValue();
-            if (!GuiComboBox.NOTHING_SELECTED.equals(i.toString())
+        if (sameAsMetaAttrsWi != null) {
+            final Info i = (Info) sameAsMetaAttrsWi.getValue();
+            if (!Widget.NOTHING_SELECTED.equals(i.toString())
                 && !META_ATTRS_DEFAULT_VALUES_TEXT.equals(i.toString())) {
                 final ServiceInfo si  = (ServiceInfo) i;
                 final ClusterStatus cs = getBrowser().getClusterStatus();
@@ -3146,9 +3065,9 @@ public class ServiceInfo extends EditableInfo {
      */
     protected String getOperationsRefId() {
         String operationsRefId = null;
-        if (sameAsOperationsCB != null) {
-            final Info i = sameAsOperationsCBValue();
-            if (!GuiComboBox.NOTHING_SELECTED.equals(i.toString())
+        if (sameAsOperationsWi != null) {
+            final Info i = sameAsOperationsWiValue();
+            if (!Widget.NOTHING_SELECTED.equals(i.toString())
                 && !OPERATIONS_DEFAULT_VALUES_TEXT.equals(i.toString())) {
                 final ServiceInfo si  = (ServiceInfo) i;
                 final ClusterStatus cs = getBrowser().getClusterStatus();
@@ -3196,7 +3115,8 @@ public class ServiceInfo extends EditableInfo {
             if (value == null) {
                 value = "";
             }
-            if (value.equals(getParamDefault(param))) {
+            if (!resourceAgent.isIgnoreDefaults()
+                && value.equals(getParamDefault(param))) {
                 continue;
             }
             if (!"".equals(value)) {
@@ -3236,12 +3156,13 @@ public class ServiceInfo extends EditableInfo {
     }
 
     /** Revert all values. */
-    @Override public void revert() {
+    @Override
+    public void revert() {
         final CRMXML crmXML = getBrowser().getCRMXML();
         final String[] params = getParametersFromXML();
         boolean allSavedMetaAttrsAreDefaultValues = true;
         boolean sameAs = false;
-        if (sameAsMetaAttrsCB != null) {
+        if (sameAsMetaAttrsWi != null) {
             for (String param : params) {
                 if (isMetaAttr(param)) {
                     final String defaultValue = getParamDefault(param);
@@ -3253,27 +3174,26 @@ public class ServiceInfo extends EditableInfo {
             }
             if (savedMetaAttrInfoRef == null) {
                 if (allSavedMetaAttrsAreDefaultValues) {
-                    sameAsMetaAttrsCB.setValue(
+                    sameAsMetaAttrsWi.setValue(
                                 META_ATTRS_DEFAULT_VALUES_TEXT);
                 } else {
-                    sameAsMetaAttrsCB.setValue(
-                                 GuiComboBox.NOTHING_SELECTED);
+                    sameAsMetaAttrsWi.setValue(Widget.NOTHING_SELECTED);
                 }
             } else {
                 sameAs = true;
-                sameAsMetaAttrsCB.setValue(savedMetaAttrInfoRef);
+                sameAsMetaAttrsWi.setValue(savedMetaAttrInfoRef);
             }
         }
         for (String param : params) {
             if (!sameAs || !isMetaAttr(param)) {
                 final String v = getParamSaved(param);
-                final GuiComboBox cb = paramComboBoxGet(param, null);
-                if (cb != null
-                    && !Tools.areEqual(cb.getStringValue(), v)) {
+                final Widget wi = getWidget(param, null);
+                if (wi != null
+                    && !Tools.areEqual(wi.getStringValue(), v)) {
                     if ("".equals(v)) {
-                        cb.setValue(null);
+                        wi.setValue(null);
                     } else {
-                        cb.setValue(v);
+                        wi.setValue(v);
                     }
                 }
             }
@@ -3298,8 +3218,8 @@ public class ServiceInfo extends EditableInfo {
         for (Host host : getBrowser().getClusterHosts()) {
             final HostInfo hi = host.getBrowser().getHostInfo();
             final HostLocation savedLocation = savedHostLocations.get(hi);
-            final GuiComboBox cb = scoreComboBoxHash.get(hi);
-            if (cb == null) {
+            final Widget wi = scoreComboBoxHash.get(hi);
+            if (wi == null) {
                 continue;
             }
 
@@ -3309,26 +3229,26 @@ public class ServiceInfo extends EditableInfo {
                 score = savedLocation.getScore();
                 op = savedLocation.getOperation();
             }
-            cb.setValue(score);
-            final JLabel label = cb.getLabel();
+            wi.setValue(score);
+            final JLabel label = wi.getLabel();
             final String text = getHostLocationLabel(hi.getName(), op);
             label.setText(text);
         }
         /* pingd */
-        final GuiComboBox pcb = pingComboBox;
-        if (pcb != null) {
+        final Widget pwi = pingComboBox;
+        if (pwi != null) {
             final String spo = savedPingOperation;
             if (spo == null) {
-                pcb.setValue(GuiComboBox.NOTHING_SELECTED);
+                pwi.setValue(Widget.NOTHING_SELECTED);
             } else {
-                pcb.setValue(PING_ATTRIBUTES.get(spo));
+                pwi.setValue(PING_ATTRIBUTES.get(spo));
             }
         }
     }
 
     /** Revert to saved operation values. */
     protected final void revertOperations() {
-        if (sameAsOperationsCB == null) {
+        if (sameAsOperationsWi == null) {
             return;
         }
         final ClusterStatus cs = getBrowser().getClusterStatus();
@@ -3347,9 +3267,9 @@ public class ServiceInfo extends EditableInfo {
                     defaultValue = "";
                 }
                 mOperationsComboBoxHashReadLock.lock();
-                final GuiComboBox cb = operationsComboBoxHash.get(op, param);
+                final Widget wi = operationsComboBoxHash.get(op, param);
                 mOperationsComboBoxHashReadLock.unlock();
-                String value = cb.getStringValue();
+                String value = wi.getStringValue();
                 if (value == null || "".equals(value)) {
                     value = getOpDefaultsDefault(param);
                 }
@@ -3367,24 +3287,23 @@ public class ServiceInfo extends EditableInfo {
         boolean sameAs = false;
         final ServiceInfo savedOpIdRef = savedOperationIdRef;
         ServiceInfo operationIdRef = null;
-        final Info ref = sameAsOperationsCBValue();
+        final Info ref = sameAsOperationsWiValue();
         if (ref instanceof ServiceInfo) {
             operationIdRef = (ServiceInfo) ref;
         }
         if (!Tools.areEqual(operationIdRef, savedOpIdRef)) {
             if (savedOpIdRef == null) {
                 if (allSavedAreDefaultValues) {
-                    sameAsOperationsCB.setValue(
+                    sameAsOperationsWi.setValue(
                                OPERATIONS_DEFAULT_VALUES_TEXT);
                 } else {
                     if (operationIdRef != null) {
-                        sameAsOperationsCB.setValue(
-                                   GuiComboBox.NOTHING_SELECTED);
+                        sameAsOperationsWi.setValue(Widget.NOTHING_SELECTED);
                     }
                 }
             } else {
                 sameAs = true;
-                sameAsOperationsCB.setValue(savedOpIdRef);
+                sameAsOperationsWi.setValue(savedOpIdRef);
             }
         }
         if (!sameAs) {
@@ -3393,17 +3312,17 @@ public class ServiceInfo extends EditableInfo {
                               : getBrowser().getCRMOperationParams(op)) {
                     final String value = savedOperation.get(op, param);
                     mOperationsComboBoxHashReadLock.lock();
-                    final GuiComboBox cb =
-                                        operationsComboBoxHash.get(op, param);
+                    final Widget wi = operationsComboBoxHash.get(op, param);
                     mOperationsComboBoxHashReadLock.unlock();
-                    if (cb != null) {
+                    if (wi != null) {
                         SwingUtilities.invokeLater(new Runnable() {
-                            @Override public void run() {
-                                cb.setEnabled(savedOpIdRef == null);
+                            @Override
+                            public void run() {
+                                wi.setEnabled(savedOpIdRef == null);
                             }
                         });
                         if (value != null) {
-                            cb.setValue(value);
+                            wi.setValue(value);
                         }
                     }
                 }
@@ -3416,7 +3335,8 @@ public class ServiceInfo extends EditableInfo {
     void apply(final Host dcHost, final boolean testOnly) {
         if (!testOnly) {
             Tools.invokeAndWait(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     getApplyButton().setEnabled(false);
                     getRevertButton().setEnabled(false);
                 }
@@ -3450,12 +3370,12 @@ public class ServiceInfo extends EditableInfo {
         }
         if (!testOnly) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     getApplyButton().setToolTipText(null);
-                    paramComboBoxGet(GUI_ID, null).setEnabled(false);
+                    getWidget(GUI_ID, null).setEnabled(false);
                     if (clInfo != null) {
-                        clInfo.paramComboBoxGet(GUI_ID, null).setEnabled(
-                                                                        false);
+                        clInfo.getWidget(GUI_ID, null).setEnabled(false);
                     }
                 }
             });
@@ -3521,7 +3441,7 @@ public class ServiceInfo extends EditableInfo {
         final String refCRMId = getOperationsRefId();
         savedOperationsId = refCRMId;
         savedOperationIdRef = getBrowser().getServiceInfoFromCRMId(refCRMId);
-        final Info i = sameAsOperationsCBValue();
+        final Info i = sameAsOperationsWiValue();
         if (i == null || (i instanceof StringInfo)) {
             savedOperationsId = null;
         } else {
@@ -3832,6 +3752,7 @@ public class ServiceInfo extends EditableInfo {
                                                    rscSet.getId(),
                                                    newRscIds,
                                                    rscSet.getSequential(),
+                                                   rscSet.getRequireAll(),
                                                    rscSet.getOrderAction(),
                                                    rscSet.getColocationRole());
                             rscSetsOrdAttrs.put(newRscSet, null);
@@ -3855,19 +3776,15 @@ public class ServiceInfo extends EditableInfo {
                 ///* so that it will not be removed */
                 cphi.setUpdated(false);
             }
-            if (CRM.setRscSet(dcHost,
-                              null,
-                              false,
-                              ordId,
-                              false,
-                              null,
-                              rscSetsOrdAttrs,
-                              attrs,
-                              testOnly)
-                && modifiedRscSet != null) {
-
-                modifiedRscSet.removeRscId(idToRemove);
-            }
+            CRM.setRscSet(dcHost,
+                          null,
+                          false,
+                          ordId,
+                          false,
+                          null,
+                          rscSetsOrdAttrs,
+                          attrs,
+                          testOnly);
         } else {
             final String rscFirstId = parent.getHeartbeatId(testOnly);
             final List<CRMXML.OrderData> allData =
@@ -4011,6 +3928,7 @@ public class ServiceInfo extends EditableInfo {
                                                    rscSet.getId(),
                                                    newRscIds,
                                                    rscSet.getSequential(),
+                                                   rscSet.getRequireAll(),
                                                    rscSet.getOrderAction(),
                                                    rscSet.getColocationRole());
                             rscSetsColAttrs.put(newRscSet, null);
@@ -4033,19 +3951,15 @@ public class ServiceInfo extends EditableInfo {
             if (!testOnly) {
                 cphi.setUpdated(false);
             }
-            if (CRM.setRscSet(dcHost,
-                              colId,
-                              false,
-                              null,
-                              false,
-                              rscSetsColAttrs,
-                              null,
-                              attrs,
-                              testOnly)
-                && modifiedRscSet != null) {
-
-                modifiedRscSet.removeRscId(idToRemove);
-            }
+            CRM.setRscSet(dcHost,
+                          colId,
+                          false,
+                          null,
+                          false,
+                          rscSetsColAttrs,
+                          null,
+                          attrs,
+                          testOnly);
         } else {
             final List<CRMXML.ColocationData> allData =
                                             clStatus.getColocationDatas(rscId);
@@ -4129,7 +4043,8 @@ public class ServiceInfo extends EditableInfo {
     }
 
     /** Returns panel with graph. */
-    @Override public JPanel getGraphicalView() {
+    @Override
+    public JPanel getGraphicalView() {
         return getBrowser().getHeartbeatGraph().getGraphPanel();
     }
 
@@ -4292,7 +4207,8 @@ public class ServiceInfo extends EditableInfo {
         getBrowser().getHeartbeatGraph().reloadServiceMenus();
         if (reloadNode) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     getBrowser().getHeartbeatGraph().scale();
                 }
             });
@@ -4562,7 +4478,8 @@ public class ServiceInfo extends EditableInfo {
     }
 
     /** Removes this service from the crm with confirmation dialog. */
-    @Override public void removeMyself(final boolean testOnly) {
+    @Override
+    public void removeMyself(final boolean testOnly) {
         if (getService().isNew()) {
             removeMyselfNoConfirm(getBrowser().getDCHost(), testOnly);
             getService().setNew(false);
@@ -4632,8 +4549,8 @@ public class ServiceInfo extends EditableInfo {
                         final MyListModel dlm,
                         final Map<MyMenuItem, ButtonCallback> callbackHash,
                         final MyList list,
-                        final JCheckBox colocationCB,
-                        final JCheckBox orderCB,
+                        final JCheckBox colocationWi,
+                        final JCheckBox orderWi,
                         final List<JDialog> popups,
                         final boolean testOnly) {
         /* empty */
@@ -4646,8 +4563,8 @@ public class ServiceInfo extends EditableInfo {
                         final MyListModel dlm,
                         final Map<MyMenuItem, ButtonCallback> callbackHash,
                         final MyList list,
-                        final JCheckBox colocationCB,
-                        final JCheckBox orderCB,
+                        final JCheckBox colocationWi,
+                        final JCheckBox orderWi,
                         final List<JDialog> popups,
                         final boolean testOnly) {
         final MyMenuItem mmi = new MyMenuItem(name,
@@ -4660,22 +4577,25 @@ public class ServiceInfo extends EditableInfo {
                                                    ConfigData.AccessType.OP,
                                                    false)) {
             private static final long serialVersionUID = 1L;
-            @Override public void action() {
+            @Override
+            public void action() {
                 final Thread thread = new Thread(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         hidePopup();
                         for (final JDialog otherP : popups) {
                             otherP.dispose();
                         }
                         addServicePanel(asi,
                                         null,
-                                        colocationCB.isSelected(),
-                                        orderCB.isSelected(),
+                                        colocationWi.isSelected(),
+                                        orderWi.isSelected(),
                                         true,
                                         getBrowser().getDCHost(),
                                         testOnly);
                         SwingUtilities.invokeLater(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 repaint();
                             }
                         });
@@ -4687,11 +4607,12 @@ public class ServiceInfo extends EditableInfo {
         dlm.addElement(mmi);
         final ClusterBrowser.ClMenuItemCallback mmiCallback =
             getBrowser().new ClMenuItemCallback(list, null) {
-                           @Override public void action(final Host dcHost) {
+                           @Override
+                           public void action(final Host dcHost) {
                                addServicePanel(asi,
                                                null,
-                                               colocationCB.isSelected(),
-                                               orderCB.isSelected(),
+                                               colocationWi.isSelected(),
+                                               orderWi.isSelected(),
                                                true,
                                                dcHost,
                                                true); /* test only */
@@ -4711,7 +4632,8 @@ public class ServiceInfo extends EditableInfo {
             private static final long serialVersionUID = 1L;
             private final Lock mUpdateLock = new ReentrantLock();
 
-            @Override public String enablePredicate() {
+            @Override
+            public String enablePredicate() {
                 if (getBrowser().clStatusFailed()) {
                     return ClusterBrowser.UNKNOWN_CLUSTER_STATUS_STRING;
                 } else if (getService().isRemoved()) {
@@ -4728,9 +4650,11 @@ public class ServiceInfo extends EditableInfo {
                 return null;
             }
 
-            @Override public void update() {
+            @Override
+            public void update() {
                 final Thread t = new Thread(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         if (mUpdateLock.tryLock()) {
                             try {
                                 updateThread();
@@ -4744,19 +4668,21 @@ public class ServiceInfo extends EditableInfo {
             }
 
             private void updateThread() {
-                final JCheckBox colocationCB = new JCheckBox("Colo", true);
-                final JCheckBox orderCB = new JCheckBox("Order", true);
-                colocationCB.setBackground(ClusterBrowser.STATUS_BACKGROUND);
-                colocationCB.setPreferredSize(colocationCB.getMinimumSize());
-                orderCB.setBackground(ClusterBrowser.STATUS_BACKGROUND);
-                orderCB.setPreferredSize(orderCB.getMinimumSize());
+                final JCheckBox colocationWi = new JCheckBox("Colo", true);
+                final JCheckBox orderWi = new JCheckBox("Order", true);
+                colocationWi.setBackground(ClusterBrowser.STATUS_BACKGROUND);
+                colocationWi.setPreferredSize(colocationWi.getMinimumSize());
+                orderWi.setBackground(ClusterBrowser.STATUS_BACKGROUND);
+                orderWi.setPreferredSize(orderWi.getMinimumSize());
                 SwingUtilities.invokeLater(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         setEnabled(false);
                     }
                 });
                 Tools.invokeAndWait(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         removeAll();
                     }
                 });
@@ -4782,24 +4708,24 @@ public class ServiceInfo extends EditableInfo {
                                                dlm,
                                                callbackHash,
                                                list,
-                                               colocationCB,
-                                               orderCB,
+                                               colocationWi,
+                                               orderWi,
                                                popups,
                                                testOnly);
                     asi.addExistingGroupServiceMenuItems(thisClass,
                                                          dlm,
                                                          callbackHash,
                                                          list,
-                                                         colocationCB,
-                                                         orderCB,
+                                                         colocationWi,
+                                                         orderWi,
                                                          popups,
                                                          testOnly);
                 }
                 final JPanel colOrdPanel =
                             new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
                 colOrdPanel.setBackground(ClusterBrowser.STATUS_BACKGROUND);
-                colOrdPanel.add(colocationCB);
-                colOrdPanel.add(orderCB);
+                colOrdPanel.add(colocationWi);
+                colOrdPanel.add(orderWi);
                 final boolean ret = Tools.getScrollingMenu(name,
                                                            colOrdPanel,
                                                            this,
@@ -4810,7 +4736,8 @@ public class ServiceInfo extends EditableInfo {
                                                            callbackHash);
                 if (!ret) {
                     SwingUtilities.invokeLater(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             setEnabled(false);
                         }
                     });
@@ -4833,7 +4760,8 @@ public class ServiceInfo extends EditableInfo {
                            new AccessMode(ConfigData.AccessType.ADMIN, false),
                            new AccessMode(ConfigData.AccessType.OP, false)) {
             private static final long serialVersionUID = 1L;
-            @Override public void action() {
+            @Override
+            public void action() {
                 hidePopup();
                 if (!getBrowser().linbitDrbdConfirmDialog()) {
                     return;
@@ -4874,7 +4802,8 @@ public class ServiceInfo extends EditableInfo {
                          new AccessMode(ConfigData.AccessType.ADMIN, false),
                          new AccessMode(ConfigData.AccessType.OP, false)) {
             private static final long serialVersionUID = 1L;
-            @Override public void action() {
+            @Override
+            public void action() {
                 hidePopup();
                 final FilesystemInfo fsi = (FilesystemInfo) addServicePanel(
                                                     fsService,
@@ -4908,7 +4837,8 @@ public class ServiceInfo extends EditableInfo {
                          new AccessMode(ConfigData.AccessType.ADMIN, false),
                          new AccessMode(ConfigData.AccessType.OP, false)) {
             private static final long serialVersionUID = 1L;
-            @Override public void action() {
+            @Override
+            public void action() {
                 hidePopup();
                 addServicePanel(ipService,
                                 getPos(),
@@ -4936,7 +4866,8 @@ public class ServiceInfo extends EditableInfo {
                              new AccessMode(ConfigData.AccessType.ADMIN, false),
                              new AccessMode(ConfigData.AccessType.OP, false)) {
                 private static final long serialVersionUID = 1L;
-                @Override public void action() {
+                @Override
+                public void action() {
                     hidePopup();
                     addServicePanel(fsService,
                                     getPos(),
@@ -4957,8 +4888,8 @@ public class ServiceInfo extends EditableInfo {
                                       final MyListModel dlm,
                                       final Point2D pos,
                                       final List<JDialog> popups,
-                                      final JCheckBox colocationCB,
-                                      final JCheckBox orderCB,
+                                      final JCheckBox colocationWi,
+                                      final JCheckBox orderWi,
                                       final boolean testOnly) {
         final MyMenuItem mmi =
                new MyMenuItem(
@@ -4970,7 +4901,8 @@ public class ServiceInfo extends EditableInfo {
                      new AccessMode(ConfigData.AccessType.OP,
                                     false)) {
             private static final long serialVersionUID = 1L;
-            @Override public void action() {
+            @Override
+            public void action() {
                 hidePopup();
                 for (final JDialog otherP : popups) {
                     otherP.dispose();
@@ -4985,8 +4917,8 @@ public class ServiceInfo extends EditableInfo {
                 }
                 addServicePanel(ra,
                                 getPos(),
-                                colocationCB.isSelected(),
-                                orderCB.isSelected(),
+                                colocationWi.isSelected(),
+                                orderWi.isSelected(),
                                 true,
                                 false,
                                 testOnly);
@@ -5007,7 +4939,8 @@ public class ServiceInfo extends EditableInfo {
             private static final long serialVersionUID = 1L;
             private final Lock mUpdateLock = new ReentrantLock();
 
-            @Override public String enablePredicate() {
+            @Override
+            public String enablePredicate() {
                 if (getBrowser().clStatusFailed()) {
                     return ClusterBrowser.UNKNOWN_CLUSTER_STATUS_STRING;
                 } else if (getService().isRemoved()) {
@@ -5020,9 +4953,11 @@ public class ServiceInfo extends EditableInfo {
                 return null;
             }
 
-            @Override public void update() {
+            @Override
+            public void update() {
                 final Thread t = new Thread(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         if (mUpdateLock.tryLock()) {
                             try {
                                 updateThread();
@@ -5037,12 +4972,14 @@ public class ServiceInfo extends EditableInfo {
 
             private void updateThread() {
                 SwingUtilities.invokeLater(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                        setEnabled(false);
                     }
                 });
                 Tools.invokeAndWait(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         removeAll();
                     }
                 });
@@ -5060,7 +4997,8 @@ public class ServiceInfo extends EditableInfo {
                     /* Linbit:DRBD */
                     try {
                         SwingUtilities.invokeAndWait(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 addDrbdLinbitMenu(thisMenu,
                                                   crmXML,
                                                   pos,
@@ -5080,7 +5018,8 @@ public class ServiceInfo extends EditableInfo {
                     /* drbddisk */
                     try {
                         SwingUtilities.invokeAndWait(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 addDrbddiskMenu(thisMenu,
                                                 crmXML,
                                                 pos,
@@ -5102,7 +5041,8 @@ public class ServiceInfo extends EditableInfo {
                     /* ipaddr */
                     try {
                         SwingUtilities.invokeAndWait(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 addIpMenu(thisMenu,
                                           pos,
                                           ipService,
@@ -5119,7 +5059,8 @@ public class ServiceInfo extends EditableInfo {
                     /* Filesystem */
                     try {
                         SwingUtilities.invokeAndWait(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 addFilesystemMenu(thisMenu,
                                                   pos,
                                                   fsService,
@@ -5134,19 +5075,19 @@ public class ServiceInfo extends EditableInfo {
                 }
                 final List<JDialog> popups = new ArrayList<JDialog>();
                 for (final String cl : ClusterBrowser.HB_CLASSES) {
-                    final JCheckBox colocationCB = new JCheckBox("Colo", true);
-                    final JCheckBox orderCB = new JCheckBox("Order", true);
-                    colocationCB.setBackground(
+                    final JCheckBox colocationWi = new JCheckBox("Colo", true);
+                    final JCheckBox orderWi = new JCheckBox("Order", true);
+                    colocationWi.setBackground(
                                             ClusterBrowser.STATUS_BACKGROUND);
-                    colocationCB.setPreferredSize(
-                                            colocationCB.getMinimumSize());
-                    orderCB.setBackground(ClusterBrowser.STATUS_BACKGROUND);
-                    orderCB.setPreferredSize(orderCB.getMinimumSize());
+                    colocationWi.setPreferredSize(
+                                            colocationWi.getMinimumSize());
+                    orderWi.setBackground(ClusterBrowser.STATUS_BACKGROUND);
+                    orderWi.setPreferredSize(orderWi.getMinimumSize());
                     final JPanel colOrdPanel =
                             new JPanel(new FlowLayout(FlowLayout.LEFT, 0, 0));
                     colOrdPanel.setBackground(ClusterBrowser.STATUS_BACKGROUND);
-                    colOrdPanel.add(colocationCB);
-                    colOrdPanel.add(orderCB);
+                    colOrdPanel.add(colocationWi);
+                    colOrdPanel.add(orderWi);
                     final MyMenu classItem = new MyMenu(
                             ClusterBrowser.HB_CLASS_MENU.get(cl),
                             new AccessMode(ConfigData.AccessType.ADMIN, false),
@@ -5155,13 +5096,14 @@ public class ServiceInfo extends EditableInfo {
                     for (final ResourceAgent ra : getAddServiceList(cl)) {
                         try {
                             SwingUtilities.invokeAndWait(new Runnable() {
-                                @Override public void run() {
+                                @Override
+                                public void run() {
                                     addResourceAgentMenu(ra,
                                                          dlm,
                                                          pos,
                                                          popups,
-                                                         colocationCB,
-                                                         orderCB,
+                                                         colocationWi,
+                                                         orderWi,
                                                          testOnly);
                                 }
                             });
@@ -5173,7 +5115,8 @@ public class ServiceInfo extends EditableInfo {
                     }
                     try {
                         SwingUtilities.invokeAndWait(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 final boolean ret = Tools.getScrollingMenu(
                                         ClusterBrowser.HB_CLASS_MENU.get(cl),
                                         colOrdPanel,
@@ -5214,7 +5157,8 @@ public class ServiceInfo extends EditableInfo {
                            new AccessMode(ConfigData.AccessType.OP, false)) {
                 private static final long serialVersionUID = 1L;
 
-                @Override public String enablePredicate() {
+                @Override
+                public String enablePredicate() {
                     if (getBrowser().clStatusFailed()) {
                         return ClusterBrowser.UNKNOWN_CLUSTER_STATUS_STRING;
                     } else if (getService().isRemoved()) {
@@ -5227,7 +5171,8 @@ public class ServiceInfo extends EditableInfo {
                     return null;
                 }
 
-                @Override public void action() {
+                @Override
+                public void action() {
                     hidePopup();
                     final StringInfo gi = new StringInfo(
                                             ConfigData.PM_GROUP_NAME,
@@ -5264,7 +5209,8 @@ public class ServiceInfo extends EditableInfo {
      * Returns list of items for service popup menu with actions that can
      * be executed on the heartbeat services.
      */
-    @Override public List<UpdatableItem> createPopup() {
+    @Override
+    public List<UpdatableItem> createPopup() {
         final List<UpdatableItem> items = new ArrayList<UpdatableItem>();
         final boolean testOnly = false;
         final CloneInfo ci = getCloneInfo();
@@ -5280,7 +5226,8 @@ public class ServiceInfo extends EditableInfo {
                            new AccessMode(ConfigData.AccessType.OP, false)) {
                 private static final long serialVersionUID = 1L;
 
-                @Override public final String enablePredicate() {
+                @Override
+                public final String enablePredicate() {
                     if (getBrowser().clStatusFailed()) {
                         return ClusterBrowser.UNKNOWN_CLUSTER_STATUS_STRING;
                     } else if (isStarted(testOnly)) {
@@ -5290,14 +5237,16 @@ public class ServiceInfo extends EditableInfo {
                     }
                 }
 
-                @Override public void action() {
+                @Override
+                public void action() {
                     hidePopup();
                     startResource(getBrowser().getDCHost(), testOnly);
                 }
             };
         final ClusterBrowser.ClMenuItemCallback startItemCallback =
                    getBrowser().new ClMenuItemCallback(startMenuItem, null) {
-            @Override public void action(final Host dcHost) {
+            @Override
+            public void action(final Host dcHost) {
                 startResource(dcHost, true); /* testOnly */
             }
         };
@@ -5313,7 +5262,8 @@ public class ServiceInfo extends EditableInfo {
                            new AccessMode(ConfigData.AccessType.OP, false)) {
                 private static final long serialVersionUID = 1L;
 
-                @Override public String enablePredicate() {
+                @Override
+                public String enablePredicate() {
                     if (getBrowser().clStatusFailed()) {
                         return ClusterBrowser.UNKNOWN_CLUSTER_STATUS_STRING;
                     } else if (isStopped(testOnly)) {
@@ -5323,14 +5273,16 @@ public class ServiceInfo extends EditableInfo {
                     }
                 }
 
-                @Override public void action() {
+                @Override
+                public void action() {
                     hidePopup();
                     stopResource(getBrowser().getDCHost(), testOnly);
                 }
             };
         final ClusterBrowser.ClMenuItemCallback stopItemCallback =
                     getBrowser().new ClMenuItemCallback(stopMenuItem, null) {
-            @Override public void action(final Host dcHost) {
+            @Override
+            public void action(final Host dcHost) {
                 stopResource(dcHost, true); /* testOnly */
             }
         };
@@ -5346,11 +5298,13 @@ public class ServiceInfo extends EditableInfo {
                            new AccessMode(ConfigData.AccessType.OP, false)) {
                 private static final long serialVersionUID = 1L;
 
-                @Override public boolean visiblePredicate() {
+                @Override
+                public boolean visiblePredicate() {
                     return groupInfo != null;
                 }
 
-                @Override public String enablePredicate() {
+                @Override
+                public String enablePredicate() {
                     if (getResource().isNew()) {
                         return IS_NEW_STRING;
                     }
@@ -5376,14 +5330,16 @@ public class ServiceInfo extends EditableInfo {
                     return null;
                 }
 
-                @Override public void action() {
+                @Override
+                public void action() {
                     hidePopup();
                     upResource(getBrowser().getDCHost(), testOnly);
                 }
             };
         final ClusterBrowser.ClMenuItemCallback upItemCallback =
                     getBrowser().new ClMenuItemCallback(upMenuItem, null) {
-            @Override public void action(final Host dcHost) {
+            @Override
+            public void action(final Host dcHost) {
                 upResource(dcHost, true); /* testOnly */
             }
         };
@@ -5399,11 +5355,13 @@ public class ServiceInfo extends EditableInfo {
                            new AccessMode(ConfigData.AccessType.OP, false)) {
                 private static final long serialVersionUID = 1L;
 
-                @Override public boolean visiblePredicate() {
+                @Override
+                public boolean visiblePredicate() {
                     return groupInfo != null;
                 }
 
-                @Override public String enablePredicate() {
+                @Override
+                public String enablePredicate() {
                     if (getResource().isNew()) {
                         return IS_NEW_STRING;
                     }
@@ -5429,14 +5387,16 @@ public class ServiceInfo extends EditableInfo {
                     return null;
                 }
 
-                @Override public void action() {
+                @Override
+                public void action() {
                     hidePopup();
                     downResource(getBrowser().getDCHost(), testOnly);
                 }
             };
         final ClusterBrowser.ClMenuItemCallback downItemCallback =
                     getBrowser().new ClMenuItemCallback(downMenuItem, null) {
-            @Override public void action(final Host dcHost) {
+            @Override
+            public void action(final Host dcHost) {
                 downResource(dcHost, true); /* testOnly */
             }
         };
@@ -5457,12 +5417,14 @@ public class ServiceInfo extends EditableInfo {
                new AccessMode(ConfigData.AccessType.OP, false)) {
                 private static final long serialVersionUID = 1L;
 
-                @Override public boolean predicate() {
+                @Override
+                public boolean predicate() {
                     return getService().isAvailable()
                            && isOneFailed(testOnly);
                 }
 
-                @Override public String enablePredicate() {
+                @Override
+                public String enablePredicate() {
                     if (getBrowser().clStatusFailed()) {
                         return ClusterBrowser.UNKNOWN_CLUSTER_STATUS_STRING;
                     } else if (!isOneFailedCount(testOnly)) {
@@ -5472,7 +5434,8 @@ public class ServiceInfo extends EditableInfo {
                     }
                 }
 
-                @Override public void action() {
+                @Override
+                public void action() {
                     hidePopup();
                     cleanupResource(getBrowser().getDCHost(), testOnly);
                 }
@@ -5496,10 +5459,12 @@ public class ServiceInfo extends EditableInfo {
                   new AccessMode(ConfigData.AccessType.OP, false)) {
                 private static final long serialVersionUID = 1L;
 
-                @Override public boolean predicate() {
+                @Override
+                public boolean predicate() {
                     return !isManaged(testOnly);
                 }
-                @Override public String enablePredicate() {
+                @Override
+                public String enablePredicate() {
                     if (getBrowser().clStatusFailed()) {
                         return ClusterBrowser.UNKNOWN_CLUSTER_STATUS_STRING;
                     } else {
@@ -5507,7 +5472,8 @@ public class ServiceInfo extends EditableInfo {
                     }
                 }
 
-                @Override public void action() {
+                @Override
+                public void action() {
                     hidePopup();
                     if (this.getText().equals(Tools.getString(
                                     "ClusterBrowser.Hb.ManageResource"))) {
@@ -5519,7 +5485,8 @@ public class ServiceInfo extends EditableInfo {
             };
         final ClusterBrowser.ClMenuItemCallback manageItemCallback =
                   getBrowser().new ClMenuItemCallback(manageMenuItem, null) {
-            @Override public void action(final Host dcHost) {
+            @Override
+            public void action(final Host dcHost) {
                 setManaged(!isManaged(false),
                            dcHost, true); /* testOnly */
             }
@@ -5537,7 +5504,8 @@ public class ServiceInfo extends EditableInfo {
                         new AccessMode(ConfigData.AccessType.OP, false)) {
                 private static final long serialVersionUID = 1L;
 
-                @Override public String enablePredicate() {
+                @Override
+                public String enablePredicate() {
                     if (getService().isNew()) {
                         return null;
                     }
@@ -5545,8 +5513,10 @@ public class ServiceInfo extends EditableInfo {
                         return ClusterBrowser.UNKNOWN_CLUSTER_STATUS_STRING;
                     } else if (getService().isRemoved()) {
                         return IS_BEING_REMOVED_STRING;
-                    } else if (isRunning(testOnly)) {
-                        return "cannot remove running resource";
+                    } else if (isRunning(testOnly)
+                               && !Tools.getConfigData().isAdvancedMode()) {
+                        return "cannot remove running resource<br>"
+                               + "(advanced mode only)";
                     }
                     if (groupInfo == null) {
                         return null;
@@ -5564,7 +5534,8 @@ public class ServiceInfo extends EditableInfo {
                     }
                 }
 
-                @Override public void action() {
+                @Override
+                public void action() {
                     hidePopup();
                     if (getService().isOrphaned()) {
                         cleanupResource(getBrowser().getDCHost(), testOnly);
@@ -5577,10 +5548,12 @@ public class ServiceInfo extends EditableInfo {
             final ServiceInfo thisClass = this;
             final ClusterBrowser.ClMenuItemCallback removeItemCallback =
                     getBrowser().new ClMenuItemCallback(removeMenuItem, null) {
-                @Override public final boolean isEnabled() {
+                @Override
+                public final boolean isEnabled() {
                     return super.isEnabled() && !getService().isNew();
                 }
-                @Override public final void action(final Host dcHost) {
+                @Override
+                public final void action(final Host dcHost) {
                     removeMyselfNoConfirm(dcHost, true); /* test only */
                 }
             };
@@ -5597,7 +5570,8 @@ public class ServiceInfo extends EditableInfo {
 
             private static final long serialVersionUID = 1L;
 
-            @Override public String enablePredicate() {
+            @Override
+            public String enablePredicate() {
                 if (getService().isNew()) {
                     return IS_NEW_STRING;
                 } else {
@@ -5605,7 +5579,8 @@ public class ServiceInfo extends EditableInfo {
                 }
             }
 
-            @Override public void action() {
+            @Override
+            public void action() {
                 hidePopup();
                 ServiceLogs l = new ServiceLogs(getBrowser().getCluster(),
                                                 getNameForLog(),
@@ -5614,18 +5589,43 @@ public class ServiceInfo extends EditableInfo {
             }
         };
         items.add(viewLogMenu);
-        /* advanced options */
-        final MyMenu advancedSubmenu = new MyMenu(
+        /* more migrate options */
+        final MyMenu migrateSubmenu = new MyMenu(
                         Tools.getString("ClusterBrowser.MigrateSubmenu"),
                         new AccessMode(ConfigData.AccessType.OP, false),
                         new AccessMode(ConfigData.AccessType.OP, false)) {
             private static final long serialVersionUID = 1L;
-            @Override public String enablePredicate() {
+            @Override
+            public String enablePredicate() {
                 return null; //TODO: enable only if it has items
             }
         };
-        items.add(advancedSubmenu);
-        addAdvancedMenu(advancedSubmenu);
+        items.add(migrateSubmenu);
+        addMoreMigrateMenuItems(migrateSubmenu);
+
+        /* config files */
+        final MyMenu filesSubmenu = new MyMenu(
+                        Tools.getString("ClusterBrowser.FilesSubmenu"),
+                        new AccessMode(ConfigData.AccessType.ADMIN, false),
+                        new AccessMode(ConfigData.AccessType.ADMIN, false)) {
+            private static final long serialVersionUID = 1L;
+            @Override
+            public String enablePredicate() {
+                return null; //TODO: enable only if it has items
+            }
+            @Override
+            public void update() {
+                super.update();
+                final MyMenu self = this;
+                SwingUtilities.invokeLater(new Runnable() {
+                    public void run() {
+                        removeAll();
+                        addFilesMenuItems(self);
+                    }
+                });
+            }
+        };
+        items.add(filesSubmenu);
         return items;
     }
 
@@ -5652,16 +5652,19 @@ public class ServiceInfo extends EditableInfo {
                               new AccessMode(ConfigData.AccessType.OP, false)) {
                     private static final long serialVersionUID = 1L;
 
-                    @Override public boolean predicate() {
+                    @Override
+                    public boolean predicate() {
                         return host.isClStatus();
                     }
 
-                    @Override public boolean visiblePredicate() {
+                    @Override
+                    public boolean visiblePredicate() {
                         return !host.isClStatus()
                                || enablePredicate() == null;
                     }
 
-                    @Override public String enablePredicate() {
+                    @Override
+                    public String enablePredicate() {
                         final List<String> runningOnNodes =
                                                getRunningOnNodes(testOnly);
                         if (runningOnNodes == null
@@ -5686,7 +5689,8 @@ public class ServiceInfo extends EditableInfo {
                         }
                     }
 
-                    @Override public void action() {
+                    @Override
+                    public void action() {
                         hidePopup();
                         migrateFromResource(getBrowser().getDCHost(),
                                             hostName,
@@ -5695,7 +5699,8 @@ public class ServiceInfo extends EditableInfo {
                 };
             final ClusterBrowser.ClMenuItemCallback migrateItemCallback =
                getBrowser().new ClMenuItemCallback(migrateFromMenuItem, null) {
-                @Override public void action(final Host dcHost) {
+                @Override
+                public void action(final Host dcHost) {
                     migrateFromResource(dcHost, hostName, true); /* testOnly */
                 }
             };
@@ -5713,11 +5718,13 @@ public class ServiceInfo extends EditableInfo {
                     new AccessMode(ConfigData.AccessType.OP, false)) {
                 private static final long serialVersionUID = 1L;
 
-                @Override public boolean visiblePredicate() {
+                @Override
+                public boolean visiblePredicate() {
                     return enablePredicate() == null;
                 }
 
-                @Override public String enablePredicate() {
+                @Override
+                public String enablePredicate() {
                     // TODO: if it was migrated
                     if (!getBrowser().clStatusFailed()
                            && getService().isAvailable()
@@ -5729,14 +5736,16 @@ public class ServiceInfo extends EditableInfo {
                     }
                 }
 
-                @Override public void action() {
+                @Override
+                public void action() {
                     hidePopup();
                     unmigrateResource(getBrowser().getDCHost(), testOnly);
                 }
             };
         final ClusterBrowser.ClMenuItemCallback unmigrateItemCallback =
                getBrowser().new ClMenuItemCallback(unmigrateMenuItem, null) {
-            @Override public void action(final Host dcHost) {
+            @Override
+            public void action(final Host dcHost) {
                 unmigrateResource(dcHost, true); /* testOnly */
             }
         };
@@ -5766,16 +5775,19 @@ public class ServiceInfo extends EditableInfo {
                               new AccessMode(ConfigData.AccessType.OP, false)) {
                     private static final long serialVersionUID = 1L;
 
-                    @Override public boolean predicate() {
+                    @Override
+                    public boolean predicate() {
                         return host.isClStatus();
                     }
 
-                    @Override public boolean visiblePredicate() {
+                    @Override
+                    public boolean visiblePredicate() {
                         return !host.isClStatus()
                                || enablePredicate() == null;
                     }
 
-                    @Override public String enablePredicate() {
+                    @Override
+                    public String enablePredicate() {
                         final List<String> runningOnNodes =
                                                getRunningOnNodes(testOnly);
                         if (runningOnNodes == null
@@ -5804,7 +5816,8 @@ public class ServiceInfo extends EditableInfo {
                         }
                     }
 
-                    @Override public void action() {
+                    @Override
+                    public void action() {
                         hidePopup();
                         migrateResource(hostName,
                                         getBrowser().getDCHost(),
@@ -5813,7 +5826,8 @@ public class ServiceInfo extends EditableInfo {
                 };
             final ClusterBrowser.ClMenuItemCallback migrateItemCallback =
                  getBrowser().new ClMenuItemCallback(migrateMenuItem, null) {
-                @Override public void action(final Host dcHost) {
+                @Override
+                public void action(final Host dcHost) {
                     migrateResource(hostName, dcHost, true); /* testOnly */
                 }
             };
@@ -5839,16 +5853,19 @@ public class ServiceInfo extends EditableInfo {
                               new AccessMode(ConfigData.AccessType.OP, false)) {
                     private static final long serialVersionUID = 1L;
 
-                    @Override public boolean predicate() {
+                    @Override
+                    public boolean predicate() {
                         return host.isClStatus();
                     }
 
-                    @Override public boolean visiblePredicate() {
+                    @Override
+                    public boolean visiblePredicate() {
                         return !host.isClStatus()
                                || enablePredicate() == null;
                     }
 
-                    @Override public String enablePredicate() {
+                    @Override
+                    public String enablePredicate() {
                         final List<String> runningOnNodes =
                                                getRunningOnNodes(testOnly);
                         if (runningOnNodes == null
@@ -5869,7 +5886,8 @@ public class ServiceInfo extends EditableInfo {
                         }
                     }
 
-                    @Override public void action() {
+                    @Override
+                    public void action() {
                         hidePopup();
                         forceMigrateResource(hostName,
                                              getBrowser().getDCHost(),
@@ -5879,7 +5897,8 @@ public class ServiceInfo extends EditableInfo {
             final ClusterBrowser.ClMenuItemCallback forceMigrateItemCallback =
                  getBrowser().new ClMenuItemCallback(forceMigrateMenuItem,
                                                      null) {
-                @Override public void action(final Host dcHost) {
+                @Override
+                public void action(final Host dcHost) {
                     forceMigrateResource(hostName, dcHost, true); /* testOnly */
                 }
             };
@@ -5889,17 +5908,93 @@ public class ServiceInfo extends EditableInfo {
         }
     }
 
-    /** Adds advanced submenu. */
-    final void addAdvancedMenu(final MyMenu submenu) {
-        if (submenu.getItemCount() > 0) {
-            return;
+    /** Return config files defined in DistResource config files. */
+    private List<String> getConfigFiles() {
+        String raName;
+        final ServiceInfo cs = getContainedService();
+        if (cs == null) {
+            raName = getResourceAgent().getRAString();
+        } else {
+            raName = cs.getResourceAgent().getRAString();
         }
-        addMoreMigrateMenuItems(submenu);
+        final Host[] hosts = getBrowser().getCluster().getHostsArray();
+        final List<String> cfs =
+             new ArrayList<String>(hosts[0].getDistStrings(raName + ".files"));
+        final List<String> params =
+            new ArrayList<String>(hosts[0].getDistStrings(raName + ".params"));
+        params.add("configfile");
+        params.add("config");
+        params.add("conffile");
+        for (final String param : params) {
+            String value;
+            if (cs == null) {
+                final Widget wi = getWidget(param, null);
+                if (wi == null) {
+                    value = getParamSaved(param);
+                } else {
+                    value = wi.getStringValue();
+                }
+            } else {
+                final Widget wi = cs.getWidget(param, null);
+                if (wi == null) {
+                    value = cs.getParamSaved(param);
+                } else {
+                    value = wi.getStringValue();
+                }
+            }
+            if (value != null && !"".equals(value)) {
+                cfs.add(value);
+            }
+        }
+        return cfs;
     }
 
+    /** Adds config files menuitems to the submenu. */
+    protected void addFilesMenuItems(final MyMenu submenu) {
+        final boolean testOnly = false;
+        final ServiceInfo thisClass = this;
+        final List<String> configFiles = getConfigFiles();
+        for (final String configFile : configFiles) {
+            final MyMenuItem fileItem =
+               new MyMenuItem(
+                          configFile,
+                          null,
+                          null,
+                          new AccessMode(ConfigData.AccessType.ADMIN, false),
+                          new AccessMode(ConfigData.AccessType.ADMIN, false)) {
+                    private static final long serialVersionUID = 1L;
+
+                    @Override
+                    public boolean predicate() {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean visiblePredicate() {
+                        return true;
+                    }
+
+                    @Override
+                    public String enablePredicate() {
+                        return null;
+                    }
+
+                    @Override
+                    public void action() {
+                        final EditConfig ed =
+                          new EditConfig(configFile,
+                                         getBrowser().getCluster().getHosts());
+                        ed.showDialog();
+
+                    }
+                };
+            submenu.add(fileItem);
+        }
+    }
 
     /** Returns tool tip for the service. */
-    @Override public String getToolTipText(final boolean testOnly) {
+    @Override
+    public String getToolTipText(final boolean testOnly) {
         String nodeString = null;
         final List<String> nodes = getRunningOnNodes(testOnly);
         if (nodes != null && !nodes.isEmpty()) {
@@ -5944,7 +6039,8 @@ public class ServiceInfo extends EditableInfo {
     }
 
     /** Sets whether the info object is being updated. */
-    @Override public void setUpdated(final boolean updated) {
+    @Override
+    public void setUpdated(final boolean updated) {
         final GroupInfo gi = groupInfo;
         if (gi != null) {
             gi.setUpdated(updated);
@@ -6066,12 +6162,13 @@ public class ServiceInfo extends EditableInfo {
     }
 
     /** Returns type radio group. */
-    GuiComboBox getTypeRadioGroup() {
+    Widget getTypeRadioGroup() {
         return typeRadioGroup;
     }
 
     /** Returns units. */
-    @Override protected final Unit[] getUnits() {
+    @Override
+    protected final Unit[] getUnits() {
         return new Unit[]{
             new Unit("",    "s",  "Second",      "Seconds"), /* default unit */
             new Unit("ms",  "ms", "Millisecond", "Milliseconds"),
@@ -6168,31 +6265,33 @@ public class ServiceInfo extends EditableInfo {
 
     /** Reload combo boxes. */
     public void reloadComboBoxes() {
-        if (sameAsOperationsCB != null) {
+        if (sameAsOperationsWi != null) {
             String defaultOpIdRef = null;
-            final Info savedOpIdRef = sameAsOperationsCBValue();
+            final Info savedOpIdRef = sameAsOperationsWiValue();
             if (savedOpIdRef != null) {
                 defaultOpIdRef = savedOpIdRef.toString();
             }
             final String idRef = defaultOpIdRef;
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
-                    sameAsOperationsCB.reloadComboBox(
+                @Override
+                public void run() {
+                    sameAsOperationsWi.reloadComboBox(
                                                   idRef,
                                                   getSameServicesOperations());
                 }
             });
         }
-        if (sameAsMetaAttrsCB != null) {
+        if (sameAsMetaAttrsWi != null) {
             String defaultMAIdRef = null;
-            final Info savedMAIdRef = (Info) sameAsMetaAttrsCB.getValue();
+            final Info savedMAIdRef = (Info) sameAsMetaAttrsWi.getValue();
             if (savedMAIdRef != null) {
                 defaultMAIdRef = savedMAIdRef.toString();
             }
             final String idRef = defaultMAIdRef;
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
-                    sameAsMetaAttrsCB.reloadComboBox(
+                @Override
+                public void run() {
+                    sameAsMetaAttrsWi.reloadComboBox(
                                               idRef,
                                               getSameServicesMetaAttrs());
                 }
@@ -6246,12 +6345,12 @@ public class ServiceInfo extends EditableInfo {
     /**
      * Returns value of the same as drop down menu as an info object or null.
      */
-    final Info sameAsOperationsCBValue() {
-        if (sameAsOperationsCB == null) {
+    final Info sameAsOperationsWiValue() {
+        if (sameAsOperationsWi == null) {
             return null;
         }
         Info i = null;
-        final Object o = sameAsOperationsCB.getValue();
+        final Object o = sameAsOperationsWi.getValue();
         if (o instanceof Info) {
             i = (Info) o;
         }
@@ -6269,26 +6368,40 @@ public class ServiceInfo extends EditableInfo {
                     continue;
                 }
                 mOperationsComboBoxHashReadLock.lock();
-                final GuiComboBox cb = operationsComboBoxHash.get(op, param);
+                final Widget wi = operationsComboBoxHash.get(op, param);
                 mOperationsComboBoxHashReadLock.unlock();
-                savedOperation.put(op, param, cb.getStringValue());
+                savedOperation.put(op, param, wi.getStringValue());
             }
         }
         mSavedOperationsLock.unlock();
     }
 
     /** Returns score combo box. */
-    protected final Map<HostInfo, GuiComboBox> getScoreComboBoxHash() {
+    protected final Map<HostInfo, Widget> getScoreComboBoxHash() {
         return scoreComboBoxHash;
     }
 
     /** Returns ping combo box. */
-    protected final GuiComboBox getPingComboBox() {
+    public final Widget getPingComboBox() {
         return pingComboBox;
     }
 
     /** Sets ping combo box. */
-    protected final void setPingComboBox(final GuiComboBox pingComboBox) {
+    protected final void setPingComboBox(final Widget pingComboBox) {
         this.pingComboBox = pingComboBox;
+    }
+
+    /** Return operation combo box. */
+    public final Widget getOperationsComboBox(final String op,
+                                                final String param) {
+        mOperationsComboBoxHashReadLock.lock();
+        final Widget wi = operationsComboBoxHash.get(op, param);
+        mOperationsComboBoxHashReadLock.unlock();
+        return wi;
+    }
+
+    /** Return same as operations combo box. */
+    public final Widget getSameAsOperationsWi() {
+        return sameAsOperationsWi;
     }
 }

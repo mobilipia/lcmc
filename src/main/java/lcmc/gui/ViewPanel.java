@@ -57,7 +57,7 @@ import java.util.concurrent.locks.ReentrantLock;
  * @version $Id$
  *
  */
-class ViewPanel extends JPanel {
+public class ViewPanel extends JPanel {
     /** Serial version UID. */
     private static final long serialVersionUID = 1L;
     /** This view split pane. */
@@ -75,6 +75,8 @@ class ViewPanel extends JPanel {
     private volatile boolean disabledDuringLoad = true;
     /** Update VMS lock. */
     private final Lock mSetPanelLock = new ReentrantLock();
+    /** Last selected info object in the right pane. */
+    private Info lastSelectedInfo = null;
 
     /** Prepares a new <code>ViewPanel</code> object. */
     ViewPanel() {
@@ -90,19 +92,23 @@ class ViewPanel extends JPanel {
         tree.setBackground(Tools.getDefaultColor("ViewPanel.Background"));
         tree.setToggleClickCount(2);
         tree.addMouseListener(new MouseListener() {
-            @Override public void mouseClicked(final MouseEvent e) {
+            @Override
+            public void mouseClicked(final MouseEvent e) {
                 /* do nothing */
             }
 
-            @Override public void mouseEntered(final MouseEvent e) {
+            @Override
+            public void mouseEntered(final MouseEvent e) {
                 /* do nothing */
             }
 
-            @Override public void mouseExited(final MouseEvent e) {
+            @Override
+            public void mouseExited(final MouseEvent e) {
                 /* do nothing */
             }
 
-            @Override public void mousePressed(final MouseEvent e) {
+            @Override
+            public void mousePressed(final MouseEvent e) {
                 final int selRow = tree.getRowForLocation(e.getX(), e.getY());
                 final TreePath selPath = tree.getPathForLocation(e.getX(),
                                                                  e.getY());
@@ -117,7 +123,8 @@ class ViewPanel extends JPanel {
                 }
             }
 
-            @Override public void mouseReleased(final MouseEvent e) {
+            @Override
+            public void mouseReleased(final MouseEvent e) {
                 /* do nothing */
             }
         });
@@ -142,14 +149,16 @@ class ViewPanel extends JPanel {
 
         // Listen for when the selection changes.
         tree.addTreeSelectionListener(new TreeSelectionListener() {
-            @Override public void valueChanged(final TreeSelectionEvent e) {
+            @Override
+            public void valueChanged(final TreeSelectionEvent e) {
                 setRightComponentInView(tree, viewSP, browser);
             }
         });
 
         tree.getModel().addTreeModelListener(
             new TreeModelListener() {
-                @Override public void treeNodesChanged(final TreeModelEvent e) {
+                @Override
+                public void treeNodesChanged(final TreeModelEvent e) {
                     if (!disabledDuringLoad) {
                         final Object[] selected = e.getChildren();
                         if (selected != null && selected.length > 0) {
@@ -161,23 +170,24 @@ class ViewPanel extends JPanel {
                     }
                 }
 
-                @Override public void treeNodesInserted(
-                                                    final TreeModelEvent e) {
+                @Override
+                public void treeNodesInserted(final TreeModelEvent e) {
                     /* do nothing */
                 }
 
-                @Override public void treeNodesRemoved(
-                                                    final TreeModelEvent e) {
+                @Override
+                public void treeNodesRemoved(final TreeModelEvent e) {
                     /* do nothing */
                 }
 
-                @Override public void treeStructureChanged(
-                                                    final TreeModelEvent e) {
+                @Override
+                public void treeStructureChanged(final TreeModelEvent e) {
                     final Object[] path = e.getPath();
                     if (!disabledDuringLoad) {
                         final TreePath tp = new TreePath(path);
                         SwingUtilities.invokeLater(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 tree.expandPath(tp);
                                 tree.setSelectionPath(tp);
                             }
@@ -195,7 +205,7 @@ class ViewPanel extends JPanel {
         return disabledDuringLoad;
     }
     /** Sets if expanding of paths should be disabled during the initial load.*/
-    final void setDisabledDuringLoad(final boolean disabledDuringLoad) {
+    public final void setDisabledDuringLoad(final boolean disabledDuringLoad) {
         this.disabledDuringLoad = disabledDuringLoad;
     }
 
@@ -214,13 +224,18 @@ class ViewPanel extends JPanel {
         }
 
         final Object nodeInfo = node.getUserObject();
+        if (nodeInfo instanceof Info) {
+            lastSelectedInfo = (Info) nodeInfo;
+        }
         if (nodeInfo != null) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     if (!mSetPanelLock.tryLock()) {
                         return;
                     }
-                    final JComponent p = browser.getInfoPanel(nodeInfo);
+                    final JComponent p =
+                            browser.getInfoPanel(nodeInfo, disabledDuringLoad);
                     if (!disabledDuringLoad) {
                         final int loc = viewSP.getDividerLocation();
                         viewSP.setRightComponent(p);
@@ -237,11 +252,14 @@ class ViewPanel extends JPanel {
                                        final Info nodeInfo) {
         if (viewSP != null) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     if (!mSetPanelLock.tryLock()) {
                         return;
                     }
-                    final JComponent p = browser.getInfoPanel(nodeInfo);
+                    final JComponent p =
+                            browser.getInfoPanel(nodeInfo, disabledDuringLoad);
+                    lastSelectedInfo = nodeInfo;
                     if (!disabledDuringLoad && p != null) {
                         final int loc = viewSP.getDividerLocation();
                         viewSP.setRightComponent(p);
@@ -252,4 +270,12 @@ class ViewPanel extends JPanel {
             });
         }
     }
+
+    public final void reloadRightComponent() {
+        final Info lsi = lastSelectedInfo;
+        if (lsi != null) {
+            lsi.selectMyself();
+        }
+    }
+
 }

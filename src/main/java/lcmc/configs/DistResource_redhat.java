@@ -29,7 +29,8 @@ import java.util.Arrays;
 public final class DistResource_redhat extends java.util.ListResourceBundle {
 
     /** Get contents. */
-    @Override protected Object[][] getContents() {
+    @Override
+    protected Object[][] getContents() {
         return Arrays.copyOf(contents, contents.length);
     }
 
@@ -41,6 +42,7 @@ public final class DistResource_redhat extends java.util.ListResourceBundle {
         {"version:CentOS release 5*", "5"},
         {"version:CentOS Linux release 6*", "6"},
         {"version:CentOS release 6*", "6"},
+        {"version:Red Hat Enterprise Linux Server release 6*", "6"},
         /* directory capturing regexp on the website from the kernel version */
         {"kerneldir", "(\\d+\\.\\d+\\.\\d+-\\d+.*?el\\d+).*"},
 
@@ -169,5 +171,7 @@ public final class DistResource_redhat extends java.util.ListResourceBundle {
          + " && if [ -e /etc/corosync/corosync.conf ]; then"
          + " mv /etc/corosync/corosync.conf /etc/corosync/corosync.conf.orig; fi"},
         {"KVM.emulator",    "/usr/libexec/qemu-kvm"},
+        {"libvirt.lxc.libpath", "/usr/libexec"},
+        {"libvirt.xen.libpath", "/usr/lib/xen"},
     };
 }

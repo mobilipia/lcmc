@@ -197,13 +197,17 @@ public final class UserConfig extends XML {
                     continue;
                 }
                 Tools.getGUIData().addClusterTab(cluster);
+                if (cluster.getHosts().isEmpty()) {
+                    continue;
+                }
                 final boolean ok = cluster.connect(null, true, 1);
                 if (!ok) {
                     Tools.getGUIData().getClustersPanel().removeTab(cluster);
                     continue;
                 }
                 final Runnable runnable = new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         for (final Host host : cluster.getHosts()) {
                             host.waitOnLoading();
                         }
@@ -338,7 +342,7 @@ public final class UserConfig extends XML {
             username = System.getProperty("user.name");
         }
         if (username == null) {
-            username = "root";
+            username = Host.ROOT_USER;
         }
         host.setUsername(username);
         List<Host> hostList = hostMap.get(nodeName);

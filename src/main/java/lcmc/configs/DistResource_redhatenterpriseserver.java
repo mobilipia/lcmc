@@ -30,7 +30,8 @@ public final class DistResource_redhatenterpriseserver
                                         extends java.util.ListResourceBundle {
 
     /** Get contents. */
-    @Override protected Object[][] getContents() {
+    @Override
+    protected Object[][] getContents() {
         return Arrays.copyOf(contents, contents.length);
     }
 
@@ -105,5 +106,7 @@ public final class DistResource_redhatenterpriseserver
         {"Openais.deleteFromRc",
          DistResource.SUDO + "/sbin/chkconfig --del openais"},
         {"KVM.emulator",    "/usr/libexec/qemu-kvm"},
+        {"libvirt.lxc.libpath", "/usr/libexec"},
+        {"libvirt.xen.libpath", "/usr/lib/xen"},
     };
 }

@@ -61,6 +61,10 @@ public final class DRBD {
                                                   M_DRBD_TEST_LOCK.writeLock();
     /** "All resources" string for drbdadm commands. */
     public static final String ALL = "all";
+    /** Test only boolean variable. */
+    public static final boolean TESTONLY = true;
+    /** Live boolean variable. */
+    public static final boolean LIVE = false;
 
     /** Private constructor, cannot be instantiated. */
     private DRBD() {
@@ -80,9 +84,6 @@ public final class DRBD {
                                              final ExecCallback execCallback,
                                              final boolean outputVisible,
                                              final boolean testOnly) {
-        M_DRBD_TEST_WRITELOCK.lock();
-        drbdtestOutput = null;
-        M_DRBD_TEST_WRITELOCK.unlock();
         if (testOnly) {
             if (command.indexOf("@DRYRUN@") < 0) {
                 /* it would be very bad */
@@ -101,7 +102,11 @@ public final class DRBD {
                                                 false,
                                                 SSH.DEFAULT_COMMAND_TIMEOUT);
             M_DRBD_TEST_WRITELOCK.lock();
-            drbdtestOutput = output.getOutput();
+            if (drbdtestOutput == null) {
+                drbdtestOutput = output.getOutput();
+            } else {
+                drbdtestOutput += output.getOutput();
+            }
             M_DRBD_TEST_WRITELOCK.unlock();
             return output;
         } else {
@@ -129,6 +134,7 @@ public final class DRBD {
     public static String getDRBDtest() {
         M_DRBD_TEST_READLOCK.lock();
         final String out = drbdtestOutput;
+        drbdtestOutput = null;
         M_DRBD_TEST_READLOCK.unlock();
         return out;
     }
@@ -497,7 +503,7 @@ public final class DRBD {
         return ret.getExitCode() == 0;
     }
 
-    /** Executes the drbdadm -- --clear-bitmap new-current-uuid */
+    /** Executes the drbdadm -- --clear-bitmap new-current-uuid. */
     public static boolean skipInitialFullSync(final Host host,
                                               final String resource,
                                               final String volume,
@@ -505,7 +511,7 @@ public final class DRBD {
         return skipInitialFullSync(host, resource, volume, null, testOnly);
     }
 
-    /** Executes the drbdadm -- --clear-bitmap new-current-uuid */
+    /** Executes the drbdadm -- --clear-bitmap new-current-uuid. */
     public static boolean skipInitialFullSync(final Host host,
                                               final String resource,
                                               final String volume,

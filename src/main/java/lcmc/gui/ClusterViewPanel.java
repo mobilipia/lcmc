@@ -28,9 +28,7 @@ import lcmc.utilities.MyButton;
 import lcmc.utilities.AllHostsUpdatable;
 import lcmc.EditClusterDialog;
 
-
 import javax.swing.JPanel;
-import javax.swing.JLabel;
 import javax.swing.JComboBox;
 import javax.swing.JCheckBox;
 
@@ -47,10 +45,6 @@ import java.awt.event.ItemEvent;
 import javax.swing.border.TitledBorder;
 import javax.swing.SwingUtilities;
 
-import java.util.ArrayList;
-
-
-
 /**
  * An implementation of a custer view with tree of services.
  *
@@ -58,7 +52,7 @@ import java.util.ArrayList;
  * @version $Id$
  *
  */
-final class ClusterViewPanel extends ViewPanel implements AllHostsUpdatable {
+public final class ClusterViewPanel extends ViewPanel implements AllHostsUpdatable {
     /** Serial version UID. */
     private static final long serialVersionUID = 1L;
     /** Cluster data object. */
@@ -87,11 +81,15 @@ final class ClusterViewPanel extends ViewPanel implements AllHostsUpdatable {
         final MyButton clusterWizardButton = new MyButton(
                             Tools.getString("ClusterViewPanel.ClusterWizard"));
         clusterWizardButton.setBackgroundColor(Browser.STATUS_BACKGROUND);
-        clusterWizardButton.setPreferredSize(new Dimension(150, 20));
+        clusterWizardButton.setPreferredSize(
+                             new Dimension(Tools.getConfigData().scaled(150),
+                                           Tools.getConfigData().scaled(20)));
         clusterWizardButton.addActionListener(new ActionListener() {
-            @Override public void actionPerformed(final ActionEvent e) {
+            @Override
+            public void actionPerformed(final ActionEvent e) {
                 final Thread t = new Thread(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         final EditClusterDialog dialog =
                                                new EditClusterDialog(cluster);
                         dialog.showDialogs();
@@ -105,11 +103,15 @@ final class ClusterViewPanel extends ViewPanel implements AllHostsUpdatable {
         final MyButton disconnectButton = new MyButton(
                             Tools.getString("ClusterViewPanel.DisconnectBtn"));
         disconnectButton.setBackgroundColor(Browser.STATUS_BACKGROUND);
-        disconnectButton.setPreferredSize(new Dimension(150, 20));
+        disconnectButton.setPreferredSize(
+                            new Dimension(Tools.getConfigData().scaled(150),
+                                          Tools.getConfigData().scaled(20)));
         disconnectButton.addActionListener(new ActionListener() {
-            @Override public void actionPerformed(final ActionEvent e) {
+            @Override
+            public void actionPerformed(final ActionEvent e) {
                 final Thread t = new Thread(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         Tools.stopCluster(cluster);
                         Tools.getGUIData().getEmptyBrowser().setDisconnected(
                                                                       cluster);
@@ -145,11 +147,13 @@ final class ClusterViewPanel extends ViewPanel implements AllHostsUpdatable {
                                         Tools.getConfigData().getAccessType();
         opModeCB.setSelectedItem(ConfigData.OP_MODES_MAP.get(accessType));
         opModeCB.addItemListener(new ItemListener() {
-            @Override public void itemStateChanged(final ItemEvent e) {
+            @Override
+            public void itemStateChanged(final ItemEvent e) {
                 final String opMode = (String) e.getItem();
                 if (e.getStateChange() == ItemEvent.SELECTED) {
                     final Thread thread = new Thread(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             ConfigData.AccessType type =
                                         ConfigData.ACCESS_TYPE_MAP.get(opMode);
                             if (type == null) {
@@ -196,12 +200,14 @@ final class ClusterViewPanel extends ViewPanel implements AllHostsUpdatable {
                                             "ViewPanel.Status.Background"));
         emCB.setSelected(Tools.getConfigData().isAdvancedMode());
         emCB.addItemListener(new ItemListener() {
-            @Override public void itemStateChanged(final ItemEvent e) {
+            @Override
+            public void itemStateChanged(final ItemEvent e) {
                 final boolean selected =
                                     e.getStateChange() == ItemEvent.SELECTED;
                 if (selected != Tools.getConfigData().isAdvancedMode()) {
                     final Thread thread = new Thread(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             Tools.getConfigData().setAdvancedMode(selected);
                             Tools.getGUIData().setAdvancedModeGlobally(
                                                                      cluster,
@@ -217,7 +223,8 @@ final class ClusterViewPanel extends ViewPanel implements AllHostsUpdatable {
     }
 
     /** This is called when there was added a new host. */
-    @Override public void allHostsUpdate() {
+    @Override
+    public void allHostsUpdate() {
         cluster.getBrowser().updateClusterResources(
                                                 cluster.getHostsArray(),
                                                 cluster.getCommonFileSystems(),
@@ -237,7 +244,8 @@ final class ClusterViewPanel extends ViewPanel implements AllHostsUpdatable {
     /** Modify the operating modes combo box according to the godmode. */
     void resetOperatingModes(final boolean godMode) {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 if (godMode) {
                     operatingModesCB.addItem(ConfigData.OP_MODE_GOD);
                     operatingModesCB.setSelectedItem(ConfigData.OP_MODE_GOD);
@@ -251,7 +259,8 @@ final class ClusterViewPanel extends ViewPanel implements AllHostsUpdatable {
     /** Sets operating mode. */
     void setOperatingMode(final String opMode) {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 operatingModesCB.setSelectedItem(opMode);
             }
         });
@@ -260,7 +269,8 @@ final class ClusterViewPanel extends ViewPanel implements AllHostsUpdatable {
     /** Sets advanced mode. */
     void setAdvancedMode(final boolean advancedMode) {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 advancedModeCB.setSelected(advancedMode);
             }
         });

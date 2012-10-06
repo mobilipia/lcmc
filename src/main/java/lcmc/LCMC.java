@@ -1,16 +1,16 @@
 /*
- * This file is part of DRBD Management Console by LINBIT HA-Solutions GmbH
+ * This file is part of Linux Cluster Management Console
  * written by Rasto Levrinc.
  *
  * Copyright (C) 2011, Rastislav Levrinc
  * Copyright (C) 2009, LINBIT HA-Solutions GmbH.
  *
- * DRBD Management Console is free software; you can redistribute it and/or
+ * LCMC is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License as published
  * by the Free Software Foundation; either version 2, or (at your option)
  * any later version.
  *
- * DRBD Management Console is distributed in the hope that it will be useful,
+ * LCMC is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
@@ -116,6 +116,8 @@ public final class LCMC extends JPanel {
     private static final String RESTORE_MOUSE_OP = "restore-mouse";
     /** The --keep-helper option. */
     private static final String KEEP_HELPER_OP = "keep-helper";
+    /** The --scale option. */
+    private static final String SCALE_OP = "scale";
     /** The --id-dsa option. */
     private static final String ID_DSA_OP = "id-dsa";
     /** The --id-rsa option. */
@@ -138,6 +140,8 @@ public final class LCMC extends JPanel {
     private static final String PORT_OP = "port";
     /** The --advanced option. */
     private static final String ADVANCED_OP = "advanced";
+    /** The --one-host-cluster option. */
+    private static final String ONE_HOST_CLUSTER_OP = "one-host-cluster";
 
     /**
      * Private constructor.
@@ -241,7 +245,8 @@ public final class LCMC extends JPanel {
     /** Cleanup before closing. */
     public static void cleanupBeforeClosing() {
         final Thread t = new Thread(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 // TODO: don't try to reconnect when exiting
                 System.out.println("saving...");
                 for (int i = 0; i < 10; i++) {
@@ -372,6 +377,10 @@ public final class LCMC extends JPanel {
                           false,
                           "for testing");
         options.addOption(null,
+                          SCALE_OP,
+                          true,
+                          "scale fonts and sizes of elements in percent (100)");
+        options.addOption(null,
                           ID_DSA_OP,
                           true,
                           "location of id_dsa file ($HOME/.ssh/id_dsa)");
@@ -421,6 +430,10 @@ public final class LCMC extends JPanel {
                           ADVANCED_OP,
                           false,
                           "start in an advanced mode");
+        options.addOption(null,
+                          ONE_HOST_CLUSTER_OP,
+                          false,
+                          "allow one host cluster");
         final CommandLineParser parser = new PosixParser();
         String autoArgs = null;
         try {
@@ -444,9 +457,6 @@ public final class LCMC extends JPanel {
                     throw new ParseException(
                                         "cannot parse debug level: " + level);
                 }
-            }
-            if (cmd.hasOption(CLUSTER_OP) || cmd.hasOption(HOST_OP)) {
-                parseClusterOptions(cmd);
             }
             boolean tightvnc = cmd.hasOption(TIGHTVNC_OP);
             boolean ultravnc = cmd.hasOption(ULTRAVNC_OP);
@@ -477,7 +487,18 @@ public final class LCMC extends JPanel {
                                           cmd.hasOption(STAGING_PACEMAKER_OP));
             Tools.getConfigData().setNoLRM(cmd.hasOption(NOLRM_OP));
             Tools.getConfigData().setKeepHelper(cmd.hasOption(KEEP_HELPER_OP));
+            Tools.getConfigData().setOneHostCluster(
+                                           cmd.hasOption(ONE_HOST_CLUSTER_OP));
             final String pwd = System.getProperty("user.home");
+            final String scaleOp = cmd.getOptionValue(SCALE_OP, "100");
+            try {
+                final int scale = Integer.parseInt(scaleOp);
+                Tools.getConfigData().setScale(scale);
+                Tools.resizeFonts(scale);
+            } catch (java.lang.NumberFormatException e) {
+                Tools.appWarning("cannot parse scale: " + scaleOp);
+            }
+
             final String idDsaPath = cmd.getOptionValue(ID_DSA_OP,
                                                         pwd + "/.ssh/id_dsa");
             final String idRsaPath = cmd.getOptionValue(ID_RSA_OP,
@@ -494,11 +515,11 @@ public final class LCMC extends JPanel {
             autoArgs = cmd.getOptionValue(AUTO_OP);
             if (cmd.hasOption(HELP_OP)) {
                 final HelpFormatter formatter = new HelpFormatter();
-                formatter.printHelp("java -jar DMC.jar [OPTIONS]", options);
+                formatter.printHelp("java -jar LCMC.jar [OPTIONS]", options);
                 System.exit(0);
             }
             if (cmd.hasOption(VERSION_OP)) {
-                System.out.println("MANAGEMENT CONSOLE "
+                System.out.println("LINUX CLUSTER MANAGEMENT CONSOLE "
                                    + Tools.getRelease()
                                    + " by Rasto Levrinc");
                 System.exit(0);
@@ -535,10 +556,16 @@ public final class LCMC extends JPanel {
                                         Integer.parseInt(vncPortOffsetString));
             }
             Tools.getConfigData().setAnimFPS(fps);
+            if (cmd.hasOption(CLUSTER_OP) || cmd.hasOption(HOST_OP)) {
+                parseClusterOptions(cmd);
+            }
         } catch (ParseException exp) {
             System.out.println("ERROR: " + exp.getMessage());
             System.exit(1);
         }
+        Tools.debug(null, "max mem: "
+                          + Runtime.getRuntime().maxMemory() / 1024 / 1024
+                          + "m", 1);
         return autoArgs;
     }
 
@@ -627,6 +654,16 @@ public final class LCMC extends JPanel {
                 }
             }
         }
+        for (final String cn : clusters.keySet()) {
+            for (final HostOptions hostOptions : clusters.get(cn)) {
+                if (hostsOptions.size() < 1
+                    || (hostsOptions.size() == 1
+                        && !Tools.getConfigData().isOneHostCluster())) {
+                    throw new ParseException("not enough hosts for cluster: "
+                                             + cn);
+                }
+            }
+        }
         final String failedHost = Tools.setUserConfigFromOptions(clusters);
         if (failedHost != null) {
             Tools.appWarning("could not resolve host \"" + failedHost
@@ -655,7 +692,8 @@ public final class LCMC extends JPanel {
         mainFrame.setJMenuBar(getMenuBar());
         mainFrame.setContentPane(getMainPanel());
         javax.swing.SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 createAndShowGUI((Container) mainFrame);
             }
         });

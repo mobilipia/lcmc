@@ -22,7 +22,7 @@
 package lcmc.gui.dialog;
 
 import lcmc.utilities.Tools;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.utilities.MyButton;
 
 import javax.swing.JPanel;
@@ -104,7 +104,9 @@ public abstract class ConfigDialog {
     private boolean skipButtonShouldBeEnabled = true;
     /** Option buttons. */
     private final MyButton[] options = new MyButton[buttons().length];
-
+    /** Additional options. */
+    private final List<JComponent> additionalOptions =
+                                                   new ArrayList<JComponent>();
     /** Gets dialogPanel. */
     protected final JDialog getDialogPanel() {
         return dialogPanel;
@@ -159,7 +161,8 @@ public abstract class ConfigDialog {
     /** Sets text to the answer pane. */
     protected final void answerPaneSetText(final String text) {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 final int l = answerPaneText.length();
                 if (l > 1) {
                     answerPaneText.delete(0, l);
@@ -173,7 +176,8 @@ public abstract class ConfigDialog {
     /** Appends text to the answer pane. */
     protected final void answerPaneAddText(final String text) {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 answerPaneText.append('\n');
                 answerPaneText.append(text);
                 answerPaneSetText(answerPaneText.toString());
@@ -187,7 +191,8 @@ public abstract class ConfigDialog {
      */
     protected final void answerPaneSetTextError(final String text) {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 answerPane.setForeground(
                        Tools.getDefaultColor("ConfigDialog.AnswerPane.Error"));
                 final int l = answerPaneText.length();
@@ -203,7 +208,8 @@ public abstract class ConfigDialog {
     /** Appends the error text to the answer pane. */
     protected final void answerPaneAddTextError(final String text) {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 answerPaneText.append('\n');
                 answerPaneText.append(text);
                 answerPaneSetTextError(answerPaneText.toString());
@@ -221,9 +227,13 @@ public abstract class ConfigDialog {
         pane.setLayout(new BoxLayout(pane, BoxLayout.Y_AXIS));
         final JEditorPane descPane = new JEditorPane(
            Tools.MIME_TYPE_TEXT_HTML,
-           "<span style='font:bold italic;font-family:Dialog; font-size:14;'>"
+           "<span style='font:bold italic;font-family:Dialog; font-size:"
+           + Tools.getConfigData().scaled(14)
+           + ";'>"
            + getDialogTitle() + "</span><br>"
-           + "<span style='font-family:Dialog; font-size:12;'>"
+           + "<span style='font-family:Dialog; font-size:"
+           + Tools.getConfigData().scaled(12)
+           + ";'>"
            + getDescription() + "</span>");
         descPane.setSize(300, Integer.MAX_VALUE);
 
@@ -331,7 +341,7 @@ public abstract class ConfigDialog {
      * This method is called during every insert, update and remove events of
      * field that was added with addCheckField(). It does nothing by default.
      */
-    protected void checkFields(final GuiComboBox field) {
+    protected void checkFields(final Widget field) {
         /* Does nothing by default. */
     }
 
@@ -339,30 +349,36 @@ public abstract class ConfigDialog {
      * Add listener to the field. The checkFields(field) will be called on every
      * insert, update and remove event.
      */
-    protected final void addCheckField(final GuiComboBox field) {
+    protected final void addCheckField(final Widget field) {
         field.getDocument().addDocumentListener(
                 new DocumentListener() {
-                    @Override public void insertUpdate(final DocumentEvent e) {
+                    @Override
+                    public void insertUpdate(final DocumentEvent e) {
                         final Thread t = new Thread(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 checkFields(field);
                             }
                         });
                         t.start();
                     }
 
-                    @Override public void removeUpdate(final DocumentEvent e) {
+                    @Override
+                    public void removeUpdate(final DocumentEvent e) {
                         final Thread t = new Thread(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 checkFields(field);
                             }
                         });
                         t.start();
                     }
 
-                    @Override public void changedUpdate(final DocumentEvent e) {
+                    @Override
+                    public void changedUpdate(final DocumentEvent e) {
                         final Thread t = new Thread(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 checkFields(field);
                             }
                         });
@@ -433,7 +449,8 @@ public abstract class ConfigDialog {
         if (dialogPanel == null) {
             final ImageIcon[] icons = getIcons();
             MyButton defaultButtonClass = null;
-            final List<JComponent> allOptions = new ArrayList<JComponent>();
+            final List<JComponent> allOptions =
+                                new ArrayList<JComponent>(additionalOptions);
             if (skipButtonEnabled()) {
                 skipButton = new JCheckBox(Tools.getString(
                                             "Dialog.ConfigDialog.SkipButton"));
@@ -509,8 +526,8 @@ public abstract class ConfigDialog {
 
         final PropertyChangeListener propertyChangeListener =
             new PropertyChangeListener() {
-                @Override public void propertyChange(
-                                            final PropertyChangeEvent evt) {
+                @Override
+                public void propertyChange(final PropertyChangeEvent evt) {
                     if (JOptionPane.VALUE_PROPERTY.equals(
                                                         evt.getPropertyName())
                         && !"uninitializedValue".equals(evt.getNewValue())) {
@@ -571,7 +588,8 @@ public abstract class ConfigDialog {
      */
     protected final void disableComponents(final JComponent[] components) {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 for (final String b : buttons()) {
                     final JComponent option = buttonClass(b);
                     if (option.isEnabled()) {
@@ -606,7 +624,8 @@ public abstract class ConfigDialog {
         final HashSet<JComponent> ctdHash =
                 new HashSet<JComponent>(Arrays.asList(componentsToDisable));
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 for (final JComponent dc : disabledComponents) {
                     if (!ctdHash.contains(dc)) {
                         dc.setEnabled(true);
@@ -648,11 +667,14 @@ public abstract class ConfigDialog {
         /**
          * Action performered on custom button.
          */
-        @Override public void actionPerformed(final ActionEvent event) {
+        @Override
+        public void actionPerformed(final ActionEvent event) {
             final Thread t = new Thread(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     SwingUtilities.invokeLater(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             optionPane.setValue(
                                       ((JButton) event.getSource()).getText());
                         }
@@ -679,5 +701,10 @@ public abstract class ConfigDialog {
     /** Close dialog other than pressing button. */
     protected final void disposeDialog() {
         dialogGate.countDown();
+    }
+
+    /** Add the compoment to the options. */
+    protected final void addToOptions(final JComponent c) {
+        additionalOptions.add(c);
     }
 }

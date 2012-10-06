@@ -68,7 +68,8 @@ final class Storage extends VMConfig {
     }
 
     /** Next dialog. */
-    @Override public WizardDialog nextDialog() {
+    @Override
+    public WizardDialog nextDialog() {
         if (nextDialogObject == null) {
             nextDialogObject = new Network(this, getVMSVirtualDomainInfo());
         }
@@ -79,7 +80,8 @@ final class Storage extends VMConfig {
      * Returns the title of the dialog. It is defined as
      * Dialog.vm.Domain.Title in TextResources.
      */
-    @Override protected String getDialogTitle() {
+    @Override
+    protected String getDialogTitle() {
         return Tools.getString("Dialog.vm.Storage.Title");
     }
 
@@ -87,21 +89,25 @@ final class Storage extends VMConfig {
      * Returns the description of the dialog. It is defined as
      * Dialog.vm.Domain.Description in TextResources.
      */
-    @Override protected String getDescription() {
+    @Override
+    protected String getDescription() {
         return Tools.getString("Dialog.vm.Storage.Description");
     }
 
     /** Inits dialog. */
-    @Override protected void initDialog() {
+    @Override
+    protected void initDialog() {
         super.initDialog();
         enableComponentsLater(new JComponent[]{buttonClass(nextButton())});
     }
 
     /** Inits the dialog. */
-    @Override protected void initDialogAfterVisible() {
+    @Override
+    protected void initDialogAfterVisible() {
         enableComponents();
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 final boolean enable = vmsdi.checkResourceFieldsCorrect(
                                             null,
                                             vmsdi.getRealParametersFromXML());
@@ -111,7 +117,8 @@ final class Storage extends VMConfig {
     }
 
     /** Returns input pane where user can configure a vm. */
-    @Override protected JComponent getInputPane() {
+    @Override
+    protected JComponent getInputPane() {
         if (vmsdi != null) {
             vmsdi.selectMyself();
         }
@@ -133,7 +140,7 @@ final class Storage extends VMConfig {
         vmsdi.getResource().setValue(DiskData.TARGET_BUS_TYPE, "IDE Disk");
         vmsdi.getResource().setValue(DiskData.TARGET_DEVICE, "hda");
         vmsdi.getResource().setValue(DiskData.DRIVER_TYPE, "raw");
-        if ("xen".equals(getVMSVirtualDomainInfo().paramComboBoxGet(
+        if ("xen".equals(getVMSVirtualDomainInfo().getWidget(
                         VMSXML.VM_PARAM_DOMAIN_TYPE, null).getStringValue())) {
             vmsdi.getResource().setValue(DiskData.DRIVER_NAME, "file");
         } else {
@@ -149,8 +156,8 @@ final class Storage extends VMConfig {
                       optionsPanel,
                       PARAMS,
                       buttonClass(nextButton()),
-                      Tools.getDefaultInt("Dialog.vm.Resource.LabelWidth"),
-                      Tools.getDefaultInt("Dialog.vm.Resource.FieldWidth"),
+                      Tools.getDefaultSize("Dialog.vm.Resource.LabelWidth"),
+                      Tools.getDefaultSize("Dialog.vm.Resource.FieldWidth"),
                       null);
         panel.add(optionsPanel);
         final JScrollPane sp = new JScrollPane(panel);

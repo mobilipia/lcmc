@@ -34,8 +34,6 @@ import lcmc.utilities.UpdatableItem;
 import javax.swing.ImageIcon;
 import javax.swing.JPanel;
 import javax.swing.JComponent;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
 import java.awt.Dimension;
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
@@ -71,17 +69,20 @@ public final class AvailableServiceInfo extends HbCategoryInfo {
     }
 
     /** Returns icon for this menu category. */
-    @Override public ImageIcon getMenuIcon(final boolean testOnly) {
+    @Override
+    public ImageIcon getMenuIcon(final boolean testOnly) {
         return AVAIL_SERVICES_ICON;
     }
 
     /** Returns type of the info text. text/plain or text/html. */
-    @Override protected String getInfoType() {
+    @Override
+    protected String getInfoType() {
         return Tools.MIME_TYPE_TEXT_HTML;
     }
 
     /** Returns the info about the service. */
-    @Override public String getInfo() {
+    @Override
+    public String getInfo() {
         final StringBuilder s = new StringBuilder(80);
         final CRMXML crmXML = getBrowser().getCRMXML();
         s.append("<h2>");
@@ -111,7 +112,8 @@ public final class AvailableServiceInfo extends HbCategoryInfo {
     }
 
     /** Returns back button. */
-    @Override protected JComponent getBackButton() {
+    @Override
+    protected JComponent getBackButton() {
         final JPanel buttonPanel = new JPanel(new BorderLayout());
         buttonPanel.setBackground(ClusterBrowser.BUTTON_PANEL_BACKGROUND);
         buttonPanel.setMinimumSize(new Dimension(0, 50));
@@ -120,9 +122,12 @@ public final class AvailableServiceInfo extends HbCategoryInfo {
         final MyButton overviewButton = new MyButton(
                          Tools.getString("ClusterBrowser.RAsOverviewButton"),
                          BACK_ICON);
-        overviewButton.setPreferredSize(new Dimension(180, 50));
+        overviewButton.setPreferredSize(
+                            new Dimension(Tools.getConfigData().scaled(180),
+                                          Tools.getConfigData().scaled(50)));
         overviewButton.addActionListener(new ActionListener() {
-            @Override public void actionPerformed(final ActionEvent e) {
+            @Override
+            public void actionPerformed(final ActionEvent e) {
                 final ResourceAgentClassInfo raci =
                         getBrowser().getClassInfoMap(
                                             resourceAgent.getResourceClass());
@@ -139,7 +144,8 @@ public final class AvailableServiceInfo extends HbCategoryInfo {
     }
 
     /** Returns list of menu items. */
-    @Override public List<UpdatableItem> createPopup() {
+    @Override
+    public List<UpdatableItem> createPopup() {
         final List<UpdatableItem> items = new ArrayList<UpdatableItem>();
         final MyMenuItem addServiceMenu = new MyMenuItem(
                         Tools.getString("ClusterBrowser.AddServiceToCluster"),
@@ -150,14 +156,16 @@ public final class AvailableServiceInfo extends HbCategoryInfo {
 
             private static final long serialVersionUID = 1L;
 
-            @Override public String enablePredicate() {
+            @Override
+            public String enablePredicate() {
                 if (getBrowser().clStatusFailed()) {
                     return ClusterBrowser.UNKNOWN_CLUSTER_STATUS_STRING;
                 }
                 return null;
             }
 
-            @Override public void action() {
+            @Override
+            public void action() {
                 hidePopup();
                 final ServicesInfo si = getBrowser().getServicesInfo();
                 final boolean testOnly = false;

@@ -65,11 +65,24 @@ public final class ConstraintPHInfo extends ServiceInfo {
     /** Resource set info object for this placeholder. More placeholders can
      * have on resource set info object. */
     private volatile PcmkRscSetsInfo pcmkRscSetsInfo = null;
+    /** Name of the "and" constraint placeholder .*/
+    private static final String CONSTRAINT_PLACEHOLDER_AND =
+                                       Tools.getString("ConstraintPHInfo.And");
+    /** Name of the "or" constraint placeholder .*/
+    private static final String CONSTRAINT_PLACEHOLDER_OR =
+                                       Tools.getString("ConstraintPHInfo.Or");
+
+    public enum Preference { AND, OR };
+    /** Whether the all resources are required to be started. */
+    private final Preference preference;
+
 
     /** Prepares a new <code>ConstraintPHInfo</code> object. */
     ConstraintPHInfo(final Browser browser,
-                     final CRMXML.RscSetConnectionData rscSetConnectionData) {
+                     final CRMXML.RscSetConnectionData rscSetConnectionData,
+                     final Preference preference) {
         super(NAME, null, browser);
+        this.preference = preference;
         if (rscSetConnectionData != null) {
             if (rscSetConnectionData.isColocation()) {
                 this.rscSetConnectionDataCol = rscSetConnectionData;
@@ -210,12 +223,14 @@ public final class ConstraintPHInfo extends ServiceInfo {
      * Returns long description of the parameter, that is used for
      * tool tips.
      */
-    @Override protected String getParamLongDesc(final String param) {
+    @Override
+    protected String getParamLongDesc(final String param) {
         return null;
     }
 
     /** Returns short description of the parameter, that is used as * label. */
-    @Override protected String getParamShortDesc(final String param) {
+    @Override
+    protected String getParamShortDesc(final String param) {
         return null;
     }
 
@@ -223,23 +238,26 @@ public final class ConstraintPHInfo extends ServiceInfo {
      * Checks if the new value is correct for the parameter type and
      * constraints.
      */
-    @Override protected boolean checkParam(final String param,
-                                           final String newValue) {
+    @Override
+    protected boolean checkParam(final String param, final String newValue) {
         return true;
     }
 
     /** Returns default for this parameter. */
-    @Override public String getParamDefault(final String param) {
+    @Override
+    public String getParamDefault(final String param) {
         return "default";
     }
 
     /** Returns preferred value for this parameter. */
-    @Override protected String getParamPreferred(final String param) {
+    @Override
+    protected String getParamPreferred(final String param) {
         return null;
     }
 
     /** Returns lsit of all parameters as an array. */
-    @Override public String[] getParametersFromXML() {
+    @Override
+    public String[] getParametersFromXML() {
         return new String[]{};
     }
 
@@ -247,17 +265,20 @@ public final class ConstraintPHInfo extends ServiceInfo {
      * Possible choices for pulldown menus, or null if it is not a pull
      * down menu.
      */
-    @Override protected Object[] getParamPossibleChoices(final String param) {
+    @Override
+    protected Object[] getParamPossibleChoices(final String param) {
         return null;
     }
 
     /** Returns parameter type, boolean etc. */
-    @Override protected String getParamType(final String param) {
+    @Override
+    protected String getParamType(final String param) {
         return null;
     }
 
     /** Returns section to which the global belongs. */
-    @Override protected String getSection(final String param) {
+    @Override
+    protected String getSection(final String param) {
         return null;
     }
 
@@ -265,43 +286,50 @@ public final class ConstraintPHInfo extends ServiceInfo {
      * Returns whether the parameter is of the boolean type and needs the
      * checkbox.
      */
-    @Override protected boolean isCheckBox(final String param) {
+    @Override
+    protected boolean isCheckBox(final String param) {
         return false;
     }
 
     /** Returns true if the specified parameter is of time type. */
-    @Override protected boolean isTimeType(final String param) {
+    @Override
+    protected boolean isTimeType(final String param) {
         return false;
     }
 
     /** Returns true if the specified parameter is integer. */
-    @Override protected boolean isInteger(final String param) {
+    @Override
+    protected boolean isInteger(final String param) {
         return false;
     }
 
     /** Returns true if the specified parameter is required. */
-    @Override protected boolean isRequired(final String param) {
+    @Override
+    protected boolean isRequired(final String param) {
         return true;
     }
 
     /** Applies changes to the placeholder. */
-    @Override void apply(final Host dcHost, final boolean testOnly) {
+    @Override
+    void apply(final Host dcHost, final boolean testOnly) {
         /* apply is in resource set info object. */
     }
 
     /** Returns whether this parameter is advanced. */
-    @Override protected boolean isAdvanced(final String param) {
+    @Override
+    protected boolean isAdvanced(final String param) {
         return true;
     }
 
     /** Returns access type of this parameter. */
-    @Override protected ConfigData.AccessType getAccessType(
-                                                        final String param) {
+    @Override
+    protected ConfigData.AccessType getAccessType(final String param) {
         return ConfigData.AccessType.ADMIN;
     }
 
     /** Returns name of this placeholder. */
-    @Override public String toString() {
+    @Override
+    public String toString() {
         return getName() +  " (" + getService().getId() + ")";
     }
 
@@ -310,7 +338,8 @@ public final class ConstraintPHInfo extends ServiceInfo {
      * TODO: this id is used for stored position info, should be named
      * differently.
      */
-    @Override public String getId() {
+    @Override
+    public String getId() {
         String ordId = "";
         String colId = "";
         final CRMXML.RscSetConnectionData rodata = rscSetConnectionDataOrd;
@@ -325,18 +354,21 @@ public final class ConstraintPHInfo extends ServiceInfo {
     }
 
     /** Return information panel. */
-    @Override public JComponent getInfoPanel() {
+    @Override
+    public JComponent getInfoPanel() {
         final PcmkRscSetsInfo prsi = pcmkRscSetsInfo;
         return prsi.getInfoPanel(this);
     }
 
     /** Returns tool tip for the placeholder. */
-    @Override public String getToolTipText(final boolean testOnly) {
+    @Override
+    public String getToolTipText(final boolean testOnly) {
         return Tools.getString("ConstraintPHInfo.ToolTip");
     }
 
     /** Return list of popup items. */
-    @Override public List<UpdatableItem> createPopup() {
+    @Override
+    public List<UpdatableItem> createPopup() {
         final List<UpdatableItem> items = new ArrayList<UpdatableItem>();
         final boolean testOnly = false;
         addDependencyMenuItems(items, true, testOnly);
@@ -349,7 +381,8 @@ public final class ConstraintPHInfo extends ServiceInfo {
                     new AccessMode(ConfigData.AccessType.OP, false)) {
             private static final long serialVersionUID = 1L;
 
-            @Override public String enablePredicate() {
+            @Override
+            public String enablePredicate() {
                 if (getBrowser().clStatusFailed()) {
                     return ClusterBrowser.UNKNOWN_CLUSTER_STATUS_STRING;
                 } else if (getService().isRemoved()) {
@@ -358,7 +391,8 @@ public final class ConstraintPHInfo extends ServiceInfo {
                 return null;
             }
 
-            @Override public void action() {
+            @Override
+            public void action() {
                 hidePopup();
                 removeMyself(false);
                 getBrowser().getHeartbeatGraph().repaint();
@@ -366,10 +400,12 @@ public final class ConstraintPHInfo extends ServiceInfo {
         };
         final ClusterBrowser.ClMenuItemCallback removeItemCallback =
                 getBrowser().new ClMenuItemCallback(removeMenuItem, null) {
-            @Override public boolean isEnabled() {
+            @Override
+            public boolean isEnabled() {
                 return super.isEnabled() && !getService().isNew();
             }
-            @Override public void action(final Host dcHost) {
+            @Override
+            public void action(final Host dcHost) {
                 removeMyselfNoConfirm(dcHost, true); /* test only */
             }
         };
@@ -379,8 +415,9 @@ public final class ConstraintPHInfo extends ServiceInfo {
     }
 
     /** Removes the placeholder without confirmation dialog. */
-    @Override protected void removeMyselfNoConfirm(final Host dcHost,
-                                                   final boolean testOnly) {
+    @Override
+    protected void removeMyselfNoConfirm(final Host dcHost,
+                                         final boolean testOnly) {
         if (getService().isNew()) {
             if (!testOnly) {
                 setUpdated(true);
@@ -422,7 +459,8 @@ public final class ConstraintPHInfo extends ServiceInfo {
     }
 
     /** Removes this placeholder from the crm with confirmation dialog. */
-    @Override public void removeMyself(final boolean testOnly) {
+    @Override
+    public void removeMyself(final boolean testOnly) {
         if (getService().isNew()) {
             removeMyselfNoConfirm(getBrowser().getDCHost(), testOnly);
             getService().setNew(false);
@@ -442,7 +480,8 @@ public final class ConstraintPHInfo extends ServiceInfo {
     }
 
     /** Sets whether the info object is being updated. */
-    @Override public void setUpdated(final boolean updated) {
+    @Override
+    public void setUpdated(final boolean updated) {
         if (updated && !isUpdated()) {
             getBrowser().getHeartbeatGraph().startAnimation(this);
         } else if (!updated) {
@@ -452,7 +491,8 @@ public final class ConstraintPHInfo extends ServiceInfo {
     }
 
     /** Whether this class is a constraint placeholder. */
-    @Override public boolean isConstraintPH() {
+    @Override
+    public boolean isConstraintPH() {
         return true;
     }
 
@@ -526,6 +566,9 @@ public final class ConstraintPHInfo extends ServiceInfo {
         CRMXML.RscSet outOrdRscSet2 = null;
         CRMXML.RscSet outColRscSet1 = null;
         CRMXML.RscSet outColRscSet2 = null;
+        final String requireAll = (preference == Preference.AND)
+                                                    ? CRMXML.REQUIRE_ALL_TRUE
+                                                    : CRMXML.REQUIRE_ALL_FALSE;
         for (final ServiceInfo serviceInfo : servicesAll) {
             final boolean isFrom = servicesFrom.contains(serviceInfo);
             final String idToAdd = serviceInfo.getService().getHeartbeatId();
@@ -543,14 +586,17 @@ public final class ConstraintPHInfo extends ServiceInfo {
                     }
                     createCol = true;
                     if (isFrom) {
+                        /* require all for col is noop in pcmk 1.1.7 */
                         colRscSet2 = new CRMXML.RscSet(colId,
                                                        new ArrayList<String>(),
                                                        "false",
+                                                       requireAll,
                                                        null,
                                                        null);
                         colRscSet1 = new CRMXML.RscSet(colId,
                                                        rscIds,
                                                        "false",
+                                                       CRMXML.REQUIRE_ALL_TRUE,
                                                        null,
                                                        null);
                         outColRscSet1 = colRscSet1;
@@ -558,11 +604,13 @@ public final class ConstraintPHInfo extends ServiceInfo {
                         colRscSet2 = new CRMXML.RscSet(colId,
                                                        rscIds,
                                                        "false",
+                                                       CRMXML.REQUIRE_ALL_TRUE,
                                                        null,
                                                        null);
                         colRscSet1 = new CRMXML.RscSet(colId,
                                                        new ArrayList<String>(),
                                                        "false",
+                                                       requireAll,
                                                        null,
                                                        null);
                         outColRscSet2 = colRscSet2;
@@ -598,6 +646,7 @@ public final class ConstraintPHInfo extends ServiceInfo {
                                                    rscSet.getId(),
                                                    newRscIds,
                                                    rscSet.getSequential(),
+                                                   rscSet.getRequireAll(),
                                                    rscSet.getOrderAction(),
                                                    rscSet.getColocationRole());
                                 if (isFrom) {
@@ -617,17 +666,13 @@ public final class ConstraintPHInfo extends ServiceInfo {
                     }
                     if (!colRscSetAdded) {
                         final List<String> newRscIds = new ArrayList<String>();
-                                new CRMXML.RscSet(colId,
-                                                  new ArrayList<String>(),
-                                                  "false",
-                                                  null,
-                                                  null);
                         final CRMXML.RscSet newRscSet;
                         if (toRscSet == null) {
                             newRscSet =
                                 new CRMXML.RscSet(colId,
                                                   newRscIds,
                                                   "false",
+                                                  requireAll,
                                                   null,
                                                   null);
                         } else {
@@ -636,6 +681,7 @@ public final class ConstraintPHInfo extends ServiceInfo {
                                 new CRMXML.RscSet(toRscSet.getId(),
                                                   newRscIds,
                                                   toRscSet.getSequential(),
+                                                  toRscSet.getRequireAll(),
                                                   toRscSet.getOrderAction(),
                                                   toRscSet.getColocationRole());
                         }
@@ -666,11 +712,13 @@ public final class ConstraintPHInfo extends ServiceInfo {
                         ordRscSet1 = new CRMXML.RscSet(ordId,
                                                        rscIds,
                                                        "false",
+                                                       CRMXML.REQUIRE_ALL_TRUE,
                                                        null,
                                                        null);
                         ordRscSet2 = new CRMXML.RscSet(ordId,
                                                        new ArrayList<String>(),
                                                        "false",
+                                                       requireAll,
                                                        null,
                                                        null);
                         outOrdRscSet1 = ordRscSet1;
@@ -678,11 +726,13 @@ public final class ConstraintPHInfo extends ServiceInfo {
                         ordRscSet1 = new CRMXML.RscSet(ordId,
                                                        new ArrayList<String>(),
                                                        "false",
+                                                       requireAll,
                                                        null,
                                                        null);
                         ordRscSet2 = new CRMXML.RscSet(ordId,
                                                        rscIds,
                                                        "false",
+                                                       CRMXML.REQUIRE_ALL_TRUE,
                                                        null,
                                                        null);
                         outOrdRscSet2 = ordRscSet2;
@@ -718,6 +768,7 @@ public final class ConstraintPHInfo extends ServiceInfo {
                                                    rscSet.getId(),
                                                    newRscIds,
                                                    rscSet.getSequential(),
+                                                   rscSet.getRequireAll(),
                                                    rscSet.getOrderAction(),
                                                    rscSet.getColocationRole());
                                 if (isFrom) {
@@ -740,16 +791,18 @@ public final class ConstraintPHInfo extends ServiceInfo {
                         CRMXML.RscSet newRscSet;
                         if (toRscSet == null) {
                             newRscSet = new CRMXML.RscSet(ordId,
-                                                          newRscIds,
-                                                          "false",
-                                                          null,
-                                                          null);
+                                                  newRscIds,
+                                                  "false",
+                                                  requireAll,
+                                                  null,
+                                                  null);
                         } else {
                             newRscIds.addAll(toRscSet.getRscIds());
                             newRscSet = new CRMXML.RscSet(
                                                toRscSet.getId(),
                                                newRscIds,
                                                toRscSet.getSequential(),
+                                               toRscSet.getRequireAll(),
                                                toRscSet.getOrderAction(),
                                                toRscSet.getColocationRole());
                         }
@@ -828,7 +881,8 @@ public final class ConstraintPHInfo extends ServiceInfo {
     }
 
     /** Hide/Show advanced panels. */
-    @Override public void updateAdvancedPanels() {
+    @Override
+    public void updateAdvancedPanels() {
         super.updateAdvancedPanels();
         final PcmkRscSetsInfo prsi = pcmkRscSetsInfo;
         if (prsi != null) {
@@ -860,7 +914,6 @@ public final class ConstraintPHInfo extends ServiceInfo {
         if (rscd == null) {
             return;
         }
-        final Map<String, String> attrs = new LinkedHashMap<String, String>();
         CRMXML.RscSet rscSet;
         if (first) {
             rscSet = rscd.getRscSet1();
@@ -932,21 +985,38 @@ public final class ConstraintPHInfo extends ServiceInfo {
     }
 
     /** Returns the main text that appears in the graph. */
-    @Override public String getMainTextForGraph() {
-        return getService().getId();
+    @Override
+    public String getMainTextForGraph() {
+        final CRMXML.RscSetConnectionData rscd = rscSetConnectionDataOrd;
+        if (getService().isNew()) {
+            return (preference == Preference.AND) ? CONSTRAINT_PLACEHOLDER_AND
+                                                  : CONSTRAINT_PLACEHOLDER_OR;
+        }
+        if (rscd == null || rscd.isColocation()) {
+            /* if there's colocation require-all has no effect in pcmk 1.1.7 */
+            return CONSTRAINT_PLACEHOLDER_AND;
+        }
+        final CRMXML.RscSet rscSet = rscd.getRscSet1();
+        if (rscSet != null && !rscSet.isRequireAll()) {
+            return CONSTRAINT_PLACEHOLDER_OR;
+        }
+        return CONSTRAINT_PLACEHOLDER_AND;
     }
 
     /** Returns text that appears above the icon in the graph. */
-    @Override public String getIconTextForGraph(final boolean testOnly) {
-        return "   PH";
+    @Override
+    public String getIconTextForGraph(final boolean testOnly) {
+        return "   " + getService().getId();
     }
     /** Returns text with lines as array that appears in the cluster graph. */
-    @Override public Subtext[] getSubtextsForGraph(final boolean testOnly) {
+    @Override
+    public Subtext[] getSubtextsForGraph(final boolean testOnly) {
         return null;
     }
 
     /** Stops resource in crm. */
-    @Override void stopResource(final Host dcHost, final boolean testOnly) {
+    @Override
+    void stopResource(final Host dcHost, final boolean testOnly) {
         /* cannot stop placeholder */
     }
 }

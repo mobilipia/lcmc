@@ -26,10 +26,11 @@ import lcmc.gui.resources.BlockDevInfo;
 
 import lcmc.utilities.Tools;
 import lcmc.utilities.MyButton;
+import lcmc.utilities.WidgetListener;
 import lcmc.data.ConfigData;
 import lcmc.data.AccessMode;
 import lcmc.data.Host;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.gui.Browser;
 
 import java.util.Set;
@@ -58,9 +59,9 @@ public final class LVSnapshot extends LV {
     /** Block device info object. */
     private final BlockDevInfo blockDevInfo;
     private final MyButton snapshotButton = new MyButton("Create Snapshot");
-    private GuiComboBox lvNameCB;
-    private GuiComboBox sizeCB;
-    private GuiComboBox maxSizeCB;
+    private Widget lvNameWi;
+    private Widget sizeWi;
+    private Widget maxSizeWi;
     /** Description LV snapshot. */
     private static final String SNAPSHOT_DESCRIPTION =
                                     "Create a snapshot of the logical volume.";
@@ -71,30 +72,35 @@ public final class LVSnapshot extends LV {
     }
 
     /** Finishes the dialog and sets the information. */
-    @Override protected void finishDialog() {
+    @Override
+    protected void finishDialog() {
         /* disable finish button */
     }
 
     /** Returns the title of the dialog. */
-    @Override protected String getDialogTitle() {
+    @Override
+    protected String getDialogTitle() {
         return "LV Snapshot ";
     }
 
     /** Returns the description of the dialog. */
-    @Override protected String getDescription() {
+    @Override
+    protected String getDescription() {
         return SNAPSHOT_DESCRIPTION;
     }
 
     /** Inits the dialog. */
-    @Override protected void initDialog() {
+    @Override
+    protected void initDialog() {
         super.initDialog();
         enableComponentsLater(new JComponent[]{});
     }
 
     /** Inits the dialog after it becomes visible. */
-    @Override protected void initDialogAfterVisible() {
+    @Override
+    protected void initDialogAfterVisible() {
         enableComponents();
-        makeDefaultAndRequestFocusLater(sizeCB);
+        makeDefaultAndRequestFocusLater(sizeWi);
     }
 
     /** Enables and disabled buttons. */
@@ -109,13 +115,14 @@ public final class LVSnapshot extends LV {
             this.enable = enable;
         }
 
-        @Override public void run() {
+        @Override
+        public void run() {
             boolean e = enable;
             if (enable) {
                 final long size = Tools.convertToKilobytes(
-                                                  sizeCB.getStringValue());
+                                                  sizeWi.getStringValue());
                 final long maxSize = Tools.convertToKilobytes(
-                                               maxSizeCB.getStringValue());
+                                               maxSizeWi.getStringValue());
                 if (size > maxSize) {
                     e = false;
                 } else if (size <= 0) {
@@ -126,7 +133,7 @@ public final class LVSnapshot extends LV {
                                     .getLogicalVolumesFromVolumeGroup(
                            blockDevInfo.getBlockDevice().getVolumeGroup());
                     if (lvs != null
-                        && lvs.contains(lvNameCB.getStringValue())) {
+                        && lvs.contains(lvNameWi.getStringValue())) {
                         e = false;
                     }
                 }
@@ -137,9 +144,9 @@ public final class LVSnapshot extends LV {
 
     private void setComboBoxes() {
         final String maxBlockSize = getMaxBlockSize();
-        sizeCB.setValue(Tools.convertKilobytes(Long.toString(
+        sizeWi.setValue(Tools.convertKilobytes(Long.toString(
                                      Long.parseLong(maxBlockSize) / 2)));
-        maxSizeCB.setValue(Tools.convertKilobytes(maxBlockSize));
+        maxSizeWi.setValue(Tools.convertKilobytes(maxBlockSize));
     }
 
     /** Returns the input pane. */
@@ -168,19 +175,24 @@ public final class LVSnapshot extends LV {
             }
             i++;
         }
-        lvNameCB = new GuiComboBox(defaultName,
-                                   null,
-                                   null, /* units */
-                                   GuiComboBox.Type.TEXTFIELD,
-                                   null, /* regexp */
-                                   250,
-                                   null, /* abbrv */
-                                   new AccessMode(ConfigData.AccessType.OP,
-                                                  false)); /* only adv. */
+        lvNameWi = new Widget(defaultName,
+                              null,
+                              null, /* units */
+                              Widget.Type.TEXTFIELD,
+                              null, /* regexp */
+                              250,
+                              null, /* abbrv */
+                              new AccessMode(ConfigData.AccessType.OP,
+                                             false)); /* only adv. */
         inputPane.add(new JLabel("LV Name"));
-        inputPane.add(lvNameCB);
+        inputPane.add(lvNameWi);
         inputPane.add(new JLabel());
-        lvNameCB.addListeners(null, new SizeDocumentListener());
+        lvNameWi.addListeners(new WidgetListener() {
+                                  @Override
+                                  public void check(final Object value) {
+                                      checkButtons();
+                                  }
+                              });
 
         final String maxBlockSize = getMaxBlockSize();
         /* size */
@@ -188,27 +200,29 @@ public final class LVSnapshot extends LV {
                                       Long.parseLong(maxBlockSize) / 2);
         final JLabel sizeLabel = new JLabel("New Size");
 
-        sizeCB = new GuiComboBox(Tools.convertKilobytes(newBlockSize),
-                                 null,
-                                 getUnits(), /* units */
-                                 GuiComboBox.Type.TEXTFIELDWITHUNIT,
-                                 null, /* regexp */
-                                 250,
-                                 null, /* abbrv */
-                                 new AccessMode(ConfigData.AccessType.OP,
-                                                  false)); /* only adv. */
+        sizeWi = new Widget(Tools.convertKilobytes(newBlockSize),
+                            null,
+                            getUnits(), /* units */
+                            Widget.Type.TEXTFIELDWITHUNIT,
+                            null, /* regexp */
+                            250,
+                            null, /* abbrv */
+                            new AccessMode(ConfigData.AccessType.OP,
+                                             false)); /* only adv. */
         inputPane.add(sizeLabel);
-        inputPane.add(sizeCB);
+        inputPane.add(sizeWi);
         snapshotButton.addActionListener(new ActionListener() {
-            @Override public void actionPerformed(final ActionEvent e) {
+            @Override
+            public void actionPerformed(final ActionEvent e) {
                 final Thread thread = new Thread(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         Tools.invokeAndWait(new EnableSnapshotRunnable(false));
                         disableComponents();
                         getProgressBar().start(SNAPSHOT_TIMEOUT);
                         final boolean ret = lvSnapshot(
-                                                    lvNameCB.getStringValue(),
-                                                    sizeCB.getStringValue());
+                                                    lvNameWi.getStringValue(),
+                                                    sizeWi.getStringValue());
                         final Host host = blockDevInfo.getHost();
                         host.getBrowser().getClusterBrowser().updateHWInfo(
                                                                          host);
@@ -230,21 +244,25 @@ public final class LVSnapshot extends LV {
         /* max size */
         final JLabel maxSizeLabel = new JLabel("Max Size");
         maxSizeLabel.setEnabled(false);
-        maxSizeCB = new GuiComboBox(Tools.convertKilobytes(maxBlockSize),
-                                    null,
-                                    getUnits(),
-                                    GuiComboBox.Type.TEXTFIELDWITHUNIT,
-                                    null, /* regexp */
-                                    250,
-                                    null, /* abbrv */
-                                    new AccessMode(ConfigData.AccessType.OP,
-                                                   false)); /* only adv. */
-        maxSizeCB.setEnabled(false);
+        maxSizeWi = new Widget(Tools.convertKilobytes(maxBlockSize),
+                               null,
+                               getUnits(),
+                               Widget.Type.TEXTFIELDWITHUNIT,
+                               null, /* regexp */
+                               250,
+                               null, /* abbrv */
+                               new AccessMode(ConfigData.AccessType.OP,
+                                              false)); /* only adv. */
+        maxSizeWi.setEnabled(false);
         inputPane.add(maxSizeLabel);
-        inputPane.add(maxSizeCB);
+        inputPane.add(maxSizeWi);
         inputPane.add(new JLabel());
-        sizeCB.addListeners(new SizeItemListener(),
-                            new SizeDocumentListener());
+        sizeWi.addListeners(new WidgetListener() {
+                                @Override
+                                public void check(final Object value) {
+                                    checkButtons();
+                                }
+                            });
 
         SpringUtilities.makeCompactGrid(inputPane, 4, 3,  /* rows, cols */
                                                    1, 1,  /* initX, initY */
@@ -258,34 +276,6 @@ public final class LVSnapshot extends LV {
                                               0, 0); /* xPad, yPad */
         checkButtons();
         return pane;
-    }
-
-    /** Size combo box item listener. */
-    private class SizeItemListener implements ItemListener {
-        @Override public void itemStateChanged(final ItemEvent e) {
-            if (e.getStateChange() == ItemEvent.SELECTED) {
-                checkButtons();
-            }
-        }
-    }
-
-    /** Size combo box action listener. */
-    private class SizeDocumentListener implements DocumentListener {
-        private void check() {
-            checkButtons();
-        }
-
-        @Override public void insertUpdate(final DocumentEvent e) {
-            check();
-        }
-
-        @Override public void removeUpdate(final DocumentEvent e) {
-            check();
-        }
-
-        @Override public void changedUpdate(final DocumentEvent e) {
-            check();
-        }
     }
 
     /** LV Snapshot. */

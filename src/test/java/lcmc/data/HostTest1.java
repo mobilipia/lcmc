@@ -114,7 +114,7 @@ public final class HostTest1 extends TestCase {
     @Test
     public void testGetBridges() {
         for (final Host host : TestSuite1.getHosts()) {
-            assertTrue(host.getBridges().size() == 0);
+            assertTrue(host.getBridges().size() >= 0);
             assertTrue(TestSuite1.noValueIsNull(host.getBridges()));
         }
     }
@@ -252,14 +252,15 @@ public final class HostTest1 extends TestCase {
                           "DrbdAvailVersions",
                           null, /* ProgressBar */
                           new ExecCallback() {
-                            @Override public void done(final String ans) {
+                            @Override
+                            public void done(final String ans) {
                                 final String[] items = ans.split("\\r?\\n");
                                 host.setDrbdVersionToInstall(
                                                         Tools.shellList(items));
                             }
-                            @Override public void doneError(
-                                                          final String ans,
-                                                          final int exitCode) {
+                            @Override
+                            public void doneError(final String ans,
+                                                  final int exitCode) {
                                 Tools.info("error");
                             }
                           },
@@ -275,14 +276,15 @@ public final class HostTest1 extends TestCase {
                           "DrbdAvailVersionsForDist",
                           null, /* ProgressBar */
                           new ExecCallback() {
-                            @Override public void done(final String ans) {
+                            @Override
+                            public void done(final String ans) {
                                 host.setAvailableDrbdVersions(
                                                          ans.split("\\r?\\n"));
                             }
 
-                            @Override public void doneError(
-                                                       final String ans,
-                                                       final int exitCode) {
+                            @Override
+                            public void doneError(final String ans,
+                                                  final int exitCode) {
                                 Tools.info("error");
                             }
                           },
@@ -339,14 +341,26 @@ public final class HostTest1 extends TestCase {
     @Test
     public void testGetKernelVersion() {
         for (final Host host : TestSuite1.getHosts()) {
-            assertTrue(host.getKernelVersion().indexOf("2.6") == 0);
+
+            if ("openSUSE 12.1 (x86_64)/12.1".equals(
+                                            host.getDistVersionString())) {
+                assertTrue("kernel version"
+                           + "(" + host.getDistVersionString() + ")",
+                           host.getKernelVersion() == null);
+            } else {
+                assertTrue("kernel version: " + host.getKernelVersion()
+                           + "(" + host.getDistVersionString() + ")",
+                           Character.isDigit(
+                                        host.getKernelVersion().charAt(0)));
+            }
         }
     }
 
     @Test
     public void testGetDetectedKernelVersion() {
         for (final Host host : TestSuite1.getHosts()) {
-            assertTrue(host.getDetectedKernelVersion().indexOf("2.6") == 0);
+            assertTrue(
+                Character.isDigit(host.getDetectedKernelVersion().charAt(0)));
         }
     }
 
@@ -378,12 +392,19 @@ public final class HostTest1 extends TestCase {
         final Set<String> values = new HashSet<String>(
                 Arrays.asList("debian-squeeze",
                               "debian-lenny",
+                              "fedora",
                               "rhel5",
                               "rhel6",
-                              "rhel7"));
+                              "rhel7"
+                              ));
         for (final Host host : TestSuite1.getHosts()) {
-            assertTrue("unknown: " + host.getDistVersion(),
-                       values.contains(host.getDistVersion()));
+            assertTrue("unknown: " + host.getDistVersion()
+                       + "(" + host.getDist() + ")",
+                       values.contains(host.getDistVersion())
+                       || "fedora".equals(host.getDist())
+                       || "suse".equals(host.getDist())
+                       || "debian".equals(host.getDist())
+                       || "ubuntu".equals(host.getDist()));
         }
     }
 
@@ -391,10 +412,21 @@ public final class HostTest1 extends TestCase {
     public void testGetDistVersionString() {
         final Set<String> values = new HashSet<String>(
                 Arrays.asList("SQUEEZE",
-                              "LENNY",
+                              "LENNY", 
+                              "LUCID", 
+                              "HARDY", 
+                              "wheezy/sid/12.04",
+                              "wheezy/sid/11.10",
+                              "wheezy/sid/testing",
+                              "openSUSE 12.1 (x86_64)/12.1",
+                              "squeeze/sid/11.04",
+                              "Fedora release 17 (Beefy Miracle)/17",
+                              "OPENSUSE11_4",
                               "5",
                               "6",
-                              "7"));
+                              "7",
+                              "16",
+                              "17"));
         for (final Host host : TestSuite1.getHosts()) {
             assertTrue("unknown: " + host.getDistVersionString(),
                        values.contains(host.getDistVersionString()));
@@ -409,7 +441,7 @@ public final class HostTest1 extends TestCase {
             host.connect(null, null, null);
         }
         for (final Host host : TestSuite1.getHosts()) {
-            for (int i = 0; i < 10; i++) {
+            for (int i = 0; i < 180; i++) {
                 if (host.isConnected()) {
                     break;
                 }

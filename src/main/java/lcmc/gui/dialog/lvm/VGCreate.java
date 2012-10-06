@@ -26,8 +26,9 @@ import lcmc.data.Host;
 import lcmc.data.AccessMode;
 import lcmc.data.ConfigData;
 import lcmc.data.Cluster;
+import lcmc.data.resources.BlockDevice;
 import lcmc.gui.Browser;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.gui.resources.BlockDevInfo;
 import lcmc.gui.SpringUtilities;
 import lcmc.utilities.MyButton;
@@ -35,6 +36,7 @@ import lcmc.utilities.Tools;
 import lcmc.utilities.LVM;
 
 import java.util.Map;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Set;
@@ -61,7 +63,7 @@ public final class VGCreate extends LV {
     /** Selected block device, can be null. */
     private final BlockDevInfo selectedBlockDevInfo;
     private final MyButton createButton = new MyButton("Create VG");
-    private GuiComboBox vgNameCB;
+    private Widget vgNameWi;
     private Map<Host, JCheckBox> hostCheckBoxes = null;
     private Map<String, JCheckBox> pvCheckBoxes = null;
     /** Description create VG. */
@@ -101,7 +103,7 @@ public final class VGCreate extends LV {
     /** Inits the dialog after it becomes visible. */
     protected void initDialogAfterVisible() {
         enableComponents();
-        makeDefaultAndRequestFocusLater(vgNameCB);
+        makeDefaultAndRequestFocusLater(vgNameWi);
         makeDefaultButton(createButton);
     }
 
@@ -124,11 +126,12 @@ public final class VGCreate extends LV {
             this.enable = enable;
         }
 
-        @Override public void run() {
+        @Override
+        public void run() {
             boolean e = enable;
             if (enable) {
                 boolean vgNameCorrect = true;
-                if ("".equals(vgNameCB.getStringValue())) {
+                if ("".equals(vgNameWi.getStringValue())) {
                     vgNameCorrect = false;
                 } else if (hostCheckBoxes != null) {
                     for (final Host h : hostCheckBoxes.keySet()) {
@@ -136,7 +139,7 @@ public final class VGCreate extends LV {
                             final Set<String> vgs =
                                 h.getVolumeGroupNames();
                             if (vgs != null && vgs.contains(
-                                            vgNameCB.getStringValue())) {
+                                            vgNameWi.getStringValue())) {
                                 vgNameCorrect = false;
                                 break;
                             }
@@ -144,10 +147,10 @@ public final class VGCreate extends LV {
                     }
                 }
                 if (vgNameCorrect) {
-                    vgNameCB.setBackground("", "", true);
+                    vgNameWi.setBackground("", "", true);
                 } else {
                     e = false;
-                    vgNameCB.wrongValue();
+                    vgNameWi.wrongValue();
                 }
             }
             createButton.setEnabled(e);
@@ -158,7 +161,8 @@ public final class VGCreate extends LV {
     private Map<String, JCheckBox> getPVCheckBoxes(final String selectedPV) {
         final Map<String, JCheckBox> components =
                                     new LinkedHashMap<String, JCheckBox>();
-        for (final String pvName : host.getPhysicalVolumes()) {
+        for (final BlockDevice pv : host.getPhysicalVolumes()) {
+            final String pvName = pv.getName();
             final JCheckBox button =
                            new JCheckBox(pvName, pvName.equals(selectedPV));
             button.setBackground(
@@ -170,7 +174,11 @@ public final class VGCreate extends LV {
 
     /** Returns true if the specified host has specified PVs without VGs. */
     private boolean hostHasPVS(final Host host) {
-        final List<String> oPVS = host.getPhysicalVolumes();
+        final Map<String, BlockDevice> oPVS =
+                                            new HashMap<String, BlockDevice>();
+        for (final BlockDevice bd : host.getPhysicalVolumes()) {
+            oPVS.put(bd.getName(), bd);
+        }
         final Set<String> pvs = pvCheckBoxes.keySet();
         int selected = 0;
         for (final String pv : pvs) {
@@ -178,16 +186,12 @@ public final class VGCreate extends LV {
                 continue;
             }
             selected++;
-            if (!oPVS.contains(pv)) {
+            final BlockDevice opv = oPVS.get(pv);
+            if (opv == null) {
                 return false;
             }
-            final BlockDevInfo oBdi =
-                host.getBrowser().getDrbdGraph().findBlockDevInfo(
-                                                             host.getName(),
-                                                             pv);
-            if (oBdi == null
-                || !oBdi.getBlockDevice().isPhysicalVolume()
-                || oBdi.getBlockDevice().isVolumeGroupOnPhysicalVolume()) {
+            if (!opv.isPhysicalVolume()
+                || opv.isVolumeGroupOnPhysicalVolume()) {
                 return false;
             }
         }
@@ -195,7 +199,8 @@ public final class VGCreate extends LV {
     }
 
     /** Returns the input pane. */
-    @Override protected JComponent getInputPane() {
+    @Override
+    protected JComponent getInputPane() {
         createButton.setEnabled(false);
         final JPanel pane = new JPanel(new SpringLayout());
         /* vg name */
@@ -214,17 +219,17 @@ public final class VGCreate extends LV {
             }
             i++;
         }
-        vgNameCB = new GuiComboBox(defaultName,
-                                   null,
-                                   null, /* units */
-                                   GuiComboBox.Type.TEXTFIELD,
-                                   null, /* regexp */
-                                   250,
-                                   null, /* abbrv */
-                                   new AccessMode(ConfigData.AccessType.OP,
-                                                  false)); /* only adv. */
+        vgNameWi = new Widget(defaultName,
+                              null,
+                              null, /* units */
+                              Widget.Type.TEXTFIELD,
+                              null, /* regexp */
+                              250,
+                              null, /* abbrv */
+                              new AccessMode(ConfigData.AccessType.OP,
+                                             false)); /* only adv. */
         inputPane.add(new JLabel("VG Name"));
-        inputPane.add(vgNameCB);
+        inputPane.add(vgNameWi);
 
         createButton.addActionListener(new CreateActionListener());
         inputPane.add(createButton);
@@ -237,7 +242,13 @@ public final class VGCreate extends LV {
         final JPanel pvsPane = new JPanel(new FlowLayout(FlowLayout.LEFT));
         String selectedPV = null;
         if (selectedBlockDevInfo != null) {
-            selectedPV = selectedBlockDevInfo.getName();
+            if (selectedBlockDevInfo.getBlockDevice().isDrbd()) {
+                selectedPV =
+                        selectedBlockDevInfo.getBlockDevice()
+                                            .getDrbdBlockDevice().getName();
+            } else {
+                selectedPV = selectedBlockDevInfo.getName();
+            }
         }
         pvCheckBoxes = getPVCheckBoxes(selectedPV);
         pvsPane.add(new JLabel("Select physical volumes: "));
@@ -261,6 +272,10 @@ public final class VGCreate extends LV {
             if (host == h) {
                 hostCheckBoxes.get(h).setEnabled(false);
                 hostCheckBoxes.get(h).setSelected(true);
+            } else if (selectedBlockDevInfo != null
+                       && selectedBlockDevInfo.getBlockDevice().isDrbd()) {
+                hostCheckBoxes.get(h).setEnabled(false);
+                hostCheckBoxes.get(h).setSelected(false);
             } else if (hostHasPVS(h)) {
                 hostCheckBoxes.get(h).setEnabled(true);
                 hostCheckBoxes.get(h).setSelected(false);
@@ -291,7 +306,8 @@ public final class VGCreate extends LV {
             super();
             this.onDeselect = onDeselect;
         }
-        @Override public void itemStateChanged(final ItemEvent e) {
+        @Override
+        public void itemStateChanged(final ItemEvent e) {
             if (e.getStateChange() == ItemEvent.SELECTED
                 || onDeselect) {
                 checkButtons();
@@ -305,29 +321,34 @@ public final class VGCreate extends LV {
             checkButtons();
         }
 
-        @Override public void insertUpdate(final DocumentEvent e) {
+        @Override
+        public void insertUpdate(final DocumentEvent e) {
             check();
         }
 
-        @Override public void removeUpdate(final DocumentEvent e) {
+        @Override
+        public void removeUpdate(final DocumentEvent e) {
             check();
         }
 
-        @Override public void changedUpdate(final DocumentEvent e) {
+        @Override
+        public void changedUpdate(final DocumentEvent e) {
             check();
         }
     }
 
     /** Create action listener. */
     private class CreateActionListener implements ActionListener {
-        @Override public void actionPerformed(final ActionEvent e) {
+        @Override
+        public void actionPerformed(final ActionEvent e) {
             final Thread thread = new Thread(new CreateRunnable());
             thread.start();
         }
     }
 
     private class CreateRunnable implements Runnable {
-        @Override public void run() {
+        @Override
+        public void run() {
             Tools.invokeAndWait(new EnableCreateRunnable(false));
             disableComponents();
             getProgressBar().start(CREATE_TIMEOUT
@@ -342,7 +363,7 @@ public final class VGCreate extends LV {
                         }
                     }
                     final boolean ret =
-                        vgCreate(h, vgNameCB.getStringValue(), pvNames);
+                        vgCreate(h, vgNameWi.getStringValue(), pvNames);
                     if (!ret) {
                         oneFailed = true;
                     }

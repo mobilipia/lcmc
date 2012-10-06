@@ -22,7 +22,7 @@
 package lcmc.gui.resources;
 
 import lcmc.gui.Browser;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.data.VMSXML;
 import lcmc.data.VMSXML.ParallelSerialData;
 import lcmc.data.Host;
@@ -114,8 +114,8 @@ public abstract class VMSParallelSerialInfo extends VMSHardwareInfo {
                                           ParallelSerialData.TARGET_PORT}));
     }
     /** Field type. */
-    private static final Map<String, GuiComboBox.Type> FIELD_TYPES =
-                                       new HashMap<String, GuiComboBox.Type>();
+    private static final Map<String, Widget.Type> FIELD_TYPES =
+                                       new HashMap<String, Widget.Type>();
     /** Short name. */
     private static final Map<String, String> SHORTNAME_MAP =
                                                  new HashMap<String, String>();
@@ -132,7 +132,7 @@ public abstract class VMSParallelSerialInfo extends VMSHardwareInfo {
         SHORTNAME_MAP.put(ParallelSerialData.PROTOCOL_TYPE, "Protocol");
         SHORTNAME_MAP.put(ParallelSerialData.TARGET_PORT, "Target Port");
         FIELD_TYPES.put(ParallelSerialData.PROTOCOL_TYPE,
-                        GuiComboBox.Type.RADIOGROUP);
+                        Widget.Type.RADIOGROUP);
     }
 
     /** Whether the parameter is enabled only in advanced mode. */
@@ -197,13 +197,15 @@ public abstract class VMSParallelSerialInfo extends VMSHardwareInfo {
     }
 
     /** Adds disk table with only this disk to the main panel. */
-    @Override protected final void addHardwareTable(final JPanel mainPanel) {
+    @Override
+    protected final void addHardwareTable(final JPanel mainPanel) {
         tablePanel = getTablePanel(getTableScreenName(),
                                    getTableName(),
                                    getNewBtn0(getVMSVirtualDomainInfo()));
         if (getResource().isNew()) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     tablePanel.setVisible(false);
                 }
             });
@@ -212,12 +214,14 @@ public abstract class VMSParallelSerialInfo extends VMSHardwareInfo {
     }
 
     /** Returns long description of the specified parameter. */
-    @Override protected final String getParamLongDesc(final String param) {
+    @Override
+    protected final String getParamLongDesc(final String param) {
         return getParamShortDesc(param);
     }
 
     /** Returns short description of the specified parameter. */
-    @Override protected final String getParamShortDesc(final String param) {
+    @Override
+    protected final String getParamShortDesc(final String param) {
         final String name = SHORTNAME_MAP.get(param);
         if (name == null) {
             return param;
@@ -226,79 +230,92 @@ public abstract class VMSParallelSerialInfo extends VMSHardwareInfo {
     }
 
     /** Returns preferred value for specified parameter. */
-    @Override protected final String getParamPreferred(final String param) {
+    @Override
+    protected final String getParamPreferred(final String param) {
         return PREFERRED_MAP.get(param);
     }
 
     /** Returns default value for specified parameter. */
-    @Override protected final String getParamDefault(final String param) {
+    @Override
+    protected final String getParamDefault(final String param) {
         return DEFAULTS_MAP.get(param);
     }
 
     /** Returns parameters. */
-    @Override public final String[] getParametersFromXML() {
+    @Override
+    public final String[] getParametersFromXML() {
         return PARAMETERS.clone();
     }
 
     /** Returns possible choices for drop down lists. */
-    @Override protected final Object[] getParamPossibleChoices(
-                                                         final String param) {
+    @Override
+    protected final Object[] getParamPossibleChoices(final String param) {
         return POSSIBLE_VALUES.get(param);
     }
 
     /** Returns section to which the specified parameter belongs. */
-    @Override protected final String getSection(final String param) {
+    @Override
+    protected final String getSection(final String param) {
         return "Display Options";
     }
 
     /** Returns true if the specified parameter is required. */
-    @Override protected final boolean isRequired(final String param) {
+    @Override
+    protected final boolean isRequired(final String param) {
         return IS_REQUIRED.contains(param);
     }
 
     /** Returns true if the specified parameter is integer. */
-    @Override protected final boolean isInteger(final String param) {
+    @Override
+    protected final boolean isInteger(final String param) {
         return false;
     }
 
     /** Returns true if the specified parameter is label. */
-    @Override protected final boolean isLabel(final String param) {
+    @Override
+    protected final boolean isLabel(final String param) {
         return false;
     }
 
     /** Returns true if the specified parameter is of time type. */
-    @Override protected final boolean isTimeType(final String param) {
+    @Override
+    protected final boolean isTimeType(final String param) {
         return false;
     }
 
     /** Returns whether parameter is checkbox. */
-    @Override protected final boolean isCheckBox(final String param) {
+    @Override
+    protected final boolean isCheckBox(final String param) {
         return false;
     }
 
     /** Returns the type of the parameter. */
-    @Override protected final String getParamType(final String param) {
+    @Override
+    protected final String getParamType(final String param) {
         return "undef"; // TODO:
     }
 
     /** Returns the regexp of the parameter. */
-    @Override protected final String getParamRegexp(final String param) {
+    @Override
+    protected final String getParamRegexp(final String param) {
         return null;
     }
 
     /** Returns type of the field. */
-    @Override protected final GuiComboBox.Type getFieldType(
-                                                        final String param) {
+    @Override
+    protected final Widget.Type getFieldType(final String param) {
         return FIELD_TYPES.get(param);
     }
 
     /** Applies the changes. */
-    @Override final void apply(final boolean testOnly) {
+    @Override
+    final void apply(final boolean testOnly) {
         if (testOnly) {
             return;
         }
         Tools.invokeAndWait(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 getApplyButton().setEnabled(false);
                 getRevertButton().setEnabled(false);
             }
@@ -317,16 +334,18 @@ public abstract class VMSParallelSerialInfo extends VMSHardwareInfo {
                                 getVMSVirtualDomainInfo().getDomainName();
                 final Node domainNode = vmsxml.getDomainNode(domainName);
                 modifyXML(vmsxml, domainNode, domainName, parameters);
-                vmsxml.saveAndDefine(domainNode, domainName);
+                final String virshOptions =
+                                   getVMSVirtualDomainInfo().getVirshOptions();
+                vmsxml.saveAndDefine(domainNode, domainName, virshOptions);
             }
             getResource().setNew(false);
         }
         getBrowser().reload(getNode(), false);
-        for (final Host h : getVMSVirtualDomainInfo().getDefinedOnHosts()) {
-            getBrowser().periodicalVMSUpdate(h);
-        }
+        getBrowser().periodicalVMSUpdate(
+                                getVMSVirtualDomainInfo().getDefinedOnHosts());
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 tablePanel.setVisible(true);
             }
         });
@@ -338,8 +357,8 @@ public abstract class VMSParallelSerialInfo extends VMSHardwareInfo {
     }
 
     /** Returns device parameters. */
-    @Override protected Map<String, String> getHWParameters(
-                                                   final boolean allParams) {
+    @Override
+    protected Map<String, String> getHWParameters(final boolean allParams) {
         Tools.invokeAndWait(new Runnable() {
             public void run() {
                 getInfoPanel();
@@ -369,12 +388,14 @@ public abstract class VMSParallelSerialInfo extends VMSHardwareInfo {
     }
 
     /** Returns whether this parameter is advanced. */
-    @Override protected final boolean isAdvanced(final String param) {
+    @Override
+    protected final boolean isAdvanced(final String param) {
         return false;
     }
 
     /** Whether the parameter should be enabled. */
-    @Override protected final String isEnabled(final String param) {
+    @Override
+    protected final String isEnabled(final String param) {
         if (ParallelSerialData.TARGET_PORT.equals(param)) {
             return "";
         } else if (!getResource().isNew()
@@ -385,25 +406,27 @@ public abstract class VMSParallelSerialInfo extends VMSHardwareInfo {
     }
 
     /** Whether the parameter should be enabled only in advanced mode. */
-    @Override protected final boolean isEnabledOnlyInAdvancedMode(
-                                                        final String param) {
+    @Override
+    protected final boolean isEnabledOnlyInAdvancedMode(final String param) {
          return IS_ENABLED_ONLY_IN_ADVANCED.contains(param);
     }
 
     /** Returns access type of this parameter. */
-    @Override protected final ConfigData.AccessType getAccessType(
-                                                        final String param) {
+    @Override
+    protected final ConfigData.AccessType getAccessType(final String param) {
         return ConfigData.AccessType.ADMIN;
     }
 
     /** Returns true if the value of the parameter is ok. */
-    @Override protected final boolean checkParam(final String param,
-                                                 final String newValue) {
+    @Override
+    protected final boolean checkParam(final String param,
+                                       final String newValue) {
         if (ParallelSerialData.TYPE.equals(param)) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     for (final String param : PARAMETERS) {
-                        paramComboBoxGet(param, null).setVisible(
+                        getWidget(param, null).setVisible(
                              PARAMETERS_MAP.get(newValue).contains(param));
                     }
                 }
@@ -418,24 +441,26 @@ public abstract class VMSParallelSerialInfo extends VMSHardwareInfo {
     /**
      * Returns whether this item is removeable (null), or string why it isn't.
      */
-    @Override protected final String isRemoveable() {
+    @Override
+    protected final String isRemoveable() {
         return null;
     }
 
     /** Returns combo box for parameter. */
-    @Override protected final GuiComboBox getParamComboBox(final String param,
-                                                           final String prefix,
-                                                           final int width) {
+    @Override
+    protected final Widget createWidget(final String param,
+                                        final String prefix,
+                                        final int width) {
         if (ParallelSerialData.SOURCE_PATH.equals(param)) {
             final String sourceFile =
                                 getParamSaved(ParallelSerialData.SOURCE_PATH);
             final String regexp = "[^/]$";
             final MyButton fileChooserBtn = new MyButton("Browse...");
-            final GuiComboBox paramCB = new GuiComboBox(
+            final Widget paramWi = new Widget(
                                   sourceFile,
                                   null,
                                   null, /* units */
-                                  GuiComboBox.Type.TEXTFIELD,
+                                  Widget.Type.TEXTFIELD,
                                   regexp,
                                   width,
                                   null, /* abbrv */
@@ -448,13 +473,15 @@ public abstract class VMSParallelSerialInfo extends VMSHardwareInfo {
                    true and it is not possible to descent into a directory.
                    TODO: It may work in the future.
                 */
-                paramCB.setTFButtonEnabled(false);
+                paramWi.setTFButtonEnabled(false);
             }
             fileChooserBtn.addActionListener(new ActionListener() {
-                @Override public void actionPerformed(final ActionEvent e) {
+                @Override
+                public void actionPerformed(final ActionEvent e) {
                     final Thread t = new Thread(new Runnable() {
-                        @Override public void run() {
-                            final String oldDir = paramCB.getStringValue();
+                        @Override
+                        public void run() {
+                            final String oldDir = paramWi.getStringValue();
                             String directory;
                             if (oldDir == null || "".equals(oldDir)) {
                                 final String type = getComboBoxValue(
@@ -467,22 +494,23 @@ public abstract class VMSParallelSerialInfo extends VMSHardwareInfo {
                             } else {
                                 directory = oldDir;
                             }
-                            startFileChooser(paramCB, directory);
+                            startFileChooser(paramWi,
+                                             directory,
+                                             FILECHOOSER_FILE_ONLY);
                         }
                     });
                     t.start();
                 }
             });
-            paramComboBoxAdd(param, prefix, paramCB);
-            return paramCB;
+            widgetAdd(param, prefix, paramWi);
+            return paramWi;
         } else {
-            final GuiComboBox paramCB =
-                                 super.getParamComboBox(param, prefix, width);
+            final Widget paramWi = super.createWidget(param, prefix, width);
             if (ParallelSerialData.TYPE.equals(param)
                 || ParallelSerialData.SOURCE_MODE.equals(param)) {
-                paramCB.setAlwaysEditable(false);
+                paramWi.setAlwaysEditable(false);
             }
-            return paramCB;
+            return paramWi;
         }
     }
 
@@ -490,11 +518,11 @@ public abstract class VMSParallelSerialInfo extends VMSHardwareInfo {
     protected abstract MyButton getNewBtn0(final VMSVirtualDomainInfo vdi);
 
     /** Modify device xml. */
-    @Override protected abstract void modifyXML(
-                                            final VMSXML vmsxml,
-                                            final Node node,
-                                            final String domainName,
-                                            final Map<String, String> params);
+    @Override
+    protected abstract void modifyXML(final VMSXML vmsxml,
+                                      final Node node,
+                                      final String domainName,
+                                      final Map<String, String> params);
     /** Return table name that appears on the screen. */
     protected abstract String getTableScreenName();
     /** Return table name. */
@@ -506,7 +534,8 @@ public abstract class VMSParallelSerialInfo extends VMSHardwareInfo {
     }
 
     /** Returns real parameters. */
-    @Override String[] getRealParametersFromXML() {
+    @Override
+    String[] getRealParametersFromXML() {
        final List<String> params = PARAMETERS_MAP.get(
                                     getComboBoxValue(ParallelSerialData.TYPE));
        if (params == null) {

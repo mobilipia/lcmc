@@ -24,7 +24,7 @@ package lcmc.gui.resources;
 
 import lcmc.gui.Browser;
 import lcmc.gui.ClusterBrowser;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.data.Host;
 import lcmc.data.CRMXML;
 import lcmc.data.ClusterStatus;
@@ -32,6 +32,7 @@ import lcmc.data.resources.Service;
 import lcmc.data.ConfigData;
 import lcmc.utilities.CRM;
 import lcmc.utilities.Tools;
+import lcmc.Exceptions;
 
 import java.util.Map;
 import java.util.HashMap;
@@ -49,6 +50,9 @@ final class HbOrderInfo extends EditableInfo
     private ServiceInfo serviceInfoChild;
     /** Connection that keeps this constraint. */
     private final HbConnectionInfo connectionInfo;
+    /** Text of disabled item. */
+    public static final String NOT_AVAIL_FOR_PCMK_VERSION =
+                    Tools.getString("HbOrderInfo.NotAvailableForThisVersion");
 
     /** Prepares a new <code>HbOrderInfo</code> object. */
     HbOrderInfo(final HbConnectionInfo connectionInfo,
@@ -73,7 +77,8 @@ final class HbOrderInfo extends EditableInfo
     }
 
     /** Returns browser object of this info. */
-    @Override protected ClusterBrowser getBrowser() {
+    @Override
+    protected ClusterBrowser getBrowser() {
         return (ClusterBrowser) super.getBrowser();
     }
 
@@ -102,6 +107,7 @@ final class HbOrderInfo extends EditableInfo
                 rscSet = cphi.getRscSetConnectionDataOrd().getRscSet1();
             }
             resourceNode.put("sequential", rscSet.getSequential());
+            resourceNode.put(CRMXML.REQUIRE_ALL_ATTR, rscSet.getRequireAll());
             resourceNode.put("action", rscSet.getOrderAction());
         } else {
             final CRMXML.OrderData orderData = clStatus.getOrderData(ordId);
@@ -132,9 +138,9 @@ final class HbOrderInfo extends EditableInfo
                 if ((value == null && value != oldValue)
                     || (value != null && !value.equals(oldValue))) {
                     getResource().setValue(param, value);
-                    final GuiComboBox cb = paramComboBoxGet(param, null);
-                    if (cb != null) {
-                        cb.setValue(value);
+                    final Widget wi = getWidget(param, null);
+                    if (wi != null) {
+                        wi.setValue(value);
                     }
                 }
             }
@@ -142,7 +148,8 @@ final class HbOrderInfo extends EditableInfo
     }
 
     /** Returns that this is order constraint. */
-    @Override public boolean isOrder() {
+    @Override
+    public boolean isOrder() {
         return true;
     }
 
@@ -150,7 +157,8 @@ final class HbOrderInfo extends EditableInfo
      * Returns long description of the parameter, that is used for
      * tool tips.
      */
-    @Override protected String getParamLongDesc(final String param) {
+    @Override
+    protected String getParamLongDesc(final String param) {
         final String text =
                         getBrowser().getCRMXML().getOrderParamLongDesc(param);
         if (serviceInfoParent != null && serviceInfoChild != null) {
@@ -166,7 +174,8 @@ final class HbOrderInfo extends EditableInfo
     }
 
     /** Returns short description of the parameter, that is used as * label. */
-    @Override protected String getParamShortDesc(final String param) {
+    @Override
+    protected String getParamShortDesc(final String param) {
         return getBrowser().getCRMXML().getOrderParamShortDesc(param);
     }
 
@@ -174,23 +183,26 @@ final class HbOrderInfo extends EditableInfo
      * Checks if the new value is correct for the parameter type and
      * constraints.
      */
-    @Override protected boolean checkParam(final String param,
-                                           final String newValue) {
+    @Override
+    protected boolean checkParam(final String param, final String newValue) {
         return getBrowser().getCRMXML().checkOrderParam(param, newValue);
     }
 
     /** Returns default for this parameter. */
-    @Override protected String getParamDefault(final String param) {
+    @Override
+    protected String getParamDefault(final String param) {
         return getBrowser().getCRMXML().getOrderParamDefault(param);
     }
 
     /** Returns preferred value for this parameter. */
-    @Override protected String getParamPreferred(final String param) {
+    @Override
+    protected String getParamPreferred(final String param) {
         return getBrowser().getCRMXML().getOrderParamPreferred(param);
     }
 
     /** Returns lsit of all parameters as an array. */
-    @Override public String[] getParametersFromXML() {
+    @Override
+    public String[] getParametersFromXML() {
         if (serviceInfoParent == null || serviceInfoChild == null) {
             /* rsc set order */
             return getBrowser().getCRMXML().getRscSetOrderParameters();
@@ -221,7 +233,8 @@ final class HbOrderInfo extends EditableInfo
      * Possible choices for pulldown menus, or null if it is not a pull
      * down menu.
      */
-    @Override protected Object[] getParamPossibleChoices(final String param) {
+    @Override
+    protected Object[] getParamPossibleChoices(final String param) {
         if ("action".equals(param)) {
             /* rsc set */
             return getBrowser().getCRMXML().getOrderParamPossibleChoices(
@@ -242,12 +255,14 @@ final class HbOrderInfo extends EditableInfo
     }
 
     /** Returns parameter type, boolean etc. */
-    @Override protected String getParamType(final String param) {
+    @Override
+    protected String getParamType(final String param) {
         return getBrowser().getCRMXML().getOrderParamType(param);
     }
 
     /** Returns section to which the global belongs. */
-    @Override protected String getSection(final String param) {
+    @Override
+    protected String getSection(final String param) {
         return getBrowser().getCRMXML().getOrderSection(param);
     }
 
@@ -255,27 +270,32 @@ final class HbOrderInfo extends EditableInfo
      * Returns whether the parameter is of the boolean type and needs the
      * checkbox.
      */
-    @Override protected boolean isCheckBox(final String param) {
+    @Override
+    protected boolean isCheckBox(final String param) {
         return getBrowser().getCRMXML().isOrderBoolean(param);
     }
 
     /** Returns true if the specified parameter is of time type. */
-    @Override protected boolean isTimeType(final String param) {
+    @Override
+    protected boolean isTimeType(final String param) {
         return getBrowser().getCRMXML().isOrderTimeType(param);
     }
 
     /** Returns true if the specified parameter is integer. */
-    @Override protected boolean isInteger(final String param) {
+    @Override
+    protected boolean isInteger(final String param) {
         return getBrowser().getCRMXML().isOrderInteger(param);
     }
 
     /** Returns true if the specified parameter is label. */
-    @Override protected boolean isLabel(final String param) {
+    @Override
+    protected boolean isLabel(final String param) {
         return getBrowser().getCRMXML().isOrderLabel(param);
     }
 
     /** Returns true if the specified parameter is required. */
-    @Override protected boolean isRequired(final String param) {
+    @Override
+    protected boolean isRequired(final String param) {
         return getBrowser().getCRMXML().isOrderRequired(param);
     }
 
@@ -285,7 +305,7 @@ final class HbOrderInfo extends EditableInfo
         final Map<String, String> attrs = new LinkedHashMap<String, String>();
         for (final String param : params) {
             final String value = getComboBoxValue(param);
-            if (!value.equals(getParamDefault(param))) {
+            if (!Tools.areEqual(value, getParamDefault(param))) {
                 attrs.put(param, value);
             }
         }
@@ -293,7 +313,8 @@ final class HbOrderInfo extends EditableInfo
     }
 
     /** Applies changes to the order parameters. */
-    @Override public void apply(final Host dcHost, final boolean testOnly) {
+    @Override
+    public void apply(final Host dcHost, final boolean testOnly) {
         final String[] params = getParametersFromXML();
         final Map<String, String> attrs = new LinkedHashMap<String, String>();
         boolean changed = false;
@@ -366,42 +387,50 @@ final class HbOrderInfo extends EditableInfo
     }
 
     /** Returns service that belongs to this info object. */
-    @Override public Service getService() {
+    @Override
+    public Service getService() {
         return (Service) getResource();
     }
 
     /** Returns name of the rsc1 attribute. */
-    @Override public String getRsc1Name() {
+    @Override
+    public String getRsc1Name() {
         return "first";
     }
 
     /** Returns name of the rsc2 attribute. */
-    @Override public String getRsc2Name() {
+    @Override
+    public String getRsc2Name() {
         return "then";
     }
 
     /** Get parent resource in order constraint. */
-    @Override public String getRsc1() {
+    @Override
+    public String getRsc1() {
         return serviceInfoParent.toString();
     }
 
     /** Get child resource in order constraint. */
-    @Override public String getRsc2() {
+    @Override
+    public String getRsc2() {
         return serviceInfoChild.toString();
     }
 
     /** Get parent resource in order constraint. */
-    @Override public ServiceInfo getRscInfo1() {
+    @Override
+    public ServiceInfo getRscInfo1() {
         return serviceInfoParent;
     }
 
     /** Get child resource in order constraint. */
-    @Override public ServiceInfo getRscInfo2() {
+    @Override
+    public ServiceInfo getRscInfo2() {
         return serviceInfoChild;
     }
 
     /** Returns whether this parameter is advanced. */
-    @Override protected boolean isAdvanced(final String param) {
+    @Override
+    protected boolean isAdvanced(final String param) {
         if (CRMXML.SCORE_STRING.equals(param)) {
             return false;
         }
@@ -409,12 +438,26 @@ final class HbOrderInfo extends EditableInfo
     }
 
     /** Whether the parameter should be enabled. */
-    @Override protected String isEnabled(final String param) {
+    @Override
+    protected String isEnabled(final String param) {
+        if (CRMXML.REQUIRE_ALL_ATTR.equals(param)) {
+            final String pmV = getBrowser().getDCHost().getPacemakerVersion();
+            try {
+                //TODO: get this from constraints-.rng files
+                if (pmV == null || Tools.compareVersions(pmV, "1.1.7") <= 0) {
+                    return NOT_AVAIL_FOR_PCMK_VERSION;
+                }
+            } catch (Exceptions.IllegalVersionException e) {
+                Tools.appWarning("unkonwn version: " + pmV);
+                /* enable it, if version check doesn't work */
+            }
+        }
         return null;
     }
 
     /** Returns access type of this parameter. */
-    @Override protected ConfigData.AccessType getAccessType(
+    @Override
+    protected ConfigData.AccessType getAccessType(
                                                         final String param) {
         return ConfigData.AccessType.ADMIN;
     }
@@ -440,8 +483,8 @@ final class HbOrderInfo extends EditableInfo
     }
 
     /** Whether the parameter should be enabled only in advanced mode. */
-    @Override protected boolean isEnabledOnlyInAdvancedMode(
-                                                        final String param) {
+    @Override
+    protected boolean isEnabledOnlyInAdvancedMode(final String param) {
          return false;
     }
 
@@ -449,8 +492,9 @@ final class HbOrderInfo extends EditableInfo
      * Checks resource fields of all constraints that are in this
      * connection with this constraint.
      */
-    @Override boolean checkResourceFieldsCorrect(final String param,
-                                                 final String[] params) {
+    @Override
+    boolean checkResourceFieldsCorrect(final String param,
+                                       final String[] params) {
         return checkResourceFieldsCorrect(param, params, false);
     }
 
@@ -458,9 +502,10 @@ final class HbOrderInfo extends EditableInfo
      * Checks resource fields of all constraints that are in this
      * connection with this constraint.
      */
-    @Override public boolean checkResourceFieldsCorrect(final String param,
-                                                        final String[] params,
-                                                        final boolean fromUp) {
+    @Override
+    public boolean checkResourceFieldsCorrect(final String param,
+                                              final String[] params,
+                                              final boolean fromUp) {
         if (fromUp) {
             return super.checkResourceFieldsCorrect(param, params);
         } else {
@@ -472,8 +517,9 @@ final class HbOrderInfo extends EditableInfo
      * Checks resource fields of all constraints that are in this
      * connection with this constraint.
      */
-    @Override boolean checkResourceFieldsChanged(final String param,
-                                                 final String[] params) {
+    @Override
+    boolean checkResourceFieldsChanged(final String param,
+                                       final String[] params) {
         return checkResourceFieldsChanged(param, params, false);
     }
 
@@ -481,9 +527,10 @@ final class HbOrderInfo extends EditableInfo
      * Checks resource fields of all constraints that are in this
      * connection with this constraint.
      */
-    @Override public boolean checkResourceFieldsChanged(final String param,
-                                                        final String[] params,
-                                                        final boolean fromUp) {
+    @Override
+    public boolean checkResourceFieldsChanged(final String param,
+                                              final String[] params,
+                                              final boolean fromUp) {
         if (fromUp) {
             return super.checkResourceFieldsChanged(param, params);
         } else {

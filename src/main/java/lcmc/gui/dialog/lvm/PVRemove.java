@@ -96,7 +96,8 @@ public final class PVRemove extends LV {
 
     /** Enables and disabled buttons. */
     protected void checkButtons() {
-        if (blockDevInfo.getBlockDevice().isPhysicalVolume()) {
+        if (blockDevInfo.getBlockDevice().isPhysicalVolume()
+            || blockDevInfo.getBlockDevice().isDrbdPhysicalVolume()) {
             SwingUtilities.invokeLater(new EnableRemoveRunnable(true));
         }
     }
@@ -108,7 +109,8 @@ public final class PVRemove extends LV {
             this.enable = enable;
         }
 
-        @Override public void run() {
+        @Override
+        public void run() {
             final boolean e = enable;
             removeButton.setEnabled(e);
         }
@@ -147,8 +149,9 @@ public final class PVRemove extends LV {
                 hostCheckBoxes.get(h).setEnabled(false);
                 hostCheckBoxes.get(h).setSelected(true);
             } else if (oBdi == null
+                       || oBdi.getBlockDevice().isDrbd()
                        || !oBdi.getBlockDevice().isPhysicalVolume()
-                 || oBdi.getBlockDevice().isVolumeGroupOnPhysicalVolume()) {
+                    || oBdi.getBlockDevice().isVolumeGroupOnPhysicalVolume()) {
                 hostCheckBoxes.get(h).setEnabled(false);
                 hostCheckBoxes.get(h).setSelected(false);
             } else {
@@ -172,14 +175,16 @@ public final class PVRemove extends LV {
 
     /** Remove action listener. */
     private class RemoveActionListener implements ActionListener {
-        @Override public void actionPerformed(final ActionEvent e) {
+        @Override
+        public void actionPerformed(final ActionEvent e) {
             final Thread thread = new Thread(new RemoveRunnable());
             thread.start();
         }
     }
 
     private class RemoveRunnable implements Runnable {
-        @Override public void run() {
+        @Override
+        public void run() {
             Tools.invokeAndWait(new EnableRemoveRunnable(false));
             disableComponents();
             getProgressBar().start(REMOVE_TIMEOUT
@@ -243,7 +248,8 @@ public final class PVRemove extends LV {
             super();
             this.onDeselect = onDeselect;
         }
-        @Override public void itemStateChanged(final ItemEvent e) {
+        @Override
+        public void itemStateChanged(final ItemEvent e) {
             if (e.getStateChange() == ItemEvent.SELECTED
                 || onDeselect) {
                 checkButtons();

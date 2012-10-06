@@ -24,7 +24,7 @@ package lcmc.gui.resources;
 
 import lcmc.gui.Browser;
 import lcmc.gui.ClusterBrowser;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.gui.HeartbeatGraph;
 import lcmc.gui.dialog.ClusterLogs;
 import lcmc.data.Host;
@@ -35,6 +35,7 @@ import lcmc.data.PtestData;
 import lcmc.data.CRMXML;
 import lcmc.data.ConfigData;
 import lcmc.data.AccessMode;
+import java.util.Arrays;
 import lcmc.utilities.Unit;
 import lcmc.utilities.UpdatableItem;
 import lcmc.utilities.CRM;
@@ -44,6 +45,7 @@ import lcmc.utilities.MyMenu;
 import lcmc.utilities.MyMenuItem;
 import lcmc.utilities.MyList;
 import lcmc.utilities.MyListModel;
+import lcmc.Exceptions;
 
 import java.awt.event.ActionListener;
 import java.awt.event.ActionEvent;
@@ -66,8 +68,6 @@ import javax.swing.JPanel;
 import javax.swing.SwingUtilities;
 import javax.swing.tree.DefaultMutableTreeNode;
 import javax.swing.BoxLayout;
-import javax.swing.JMenu;
-import javax.swing.JMenuBar;
 import javax.swing.JScrollPane;
 import javax.swing.JDialog;
 
@@ -81,6 +81,8 @@ import java.util.concurrent.locks.ReentrantLock;
 public final class ServicesInfo extends EditableInfo {
     /** Cache for the info panel. */
     private JComponent infoPanel = null;
+    /** No clone parameter. */
+    public static final CloneInfo NO_CLONE = null;
 
     /** Prepares a new <code>ServicesInfo</code> object. */
     public ServicesInfo(final String name, final Browser browser) {
@@ -89,7 +91,8 @@ public final class ServicesInfo extends EditableInfo {
     }
 
     /** Returns browser object of this info. */
-    @Override protected ClusterBrowser getBrowser() {
+    @Override
+    public ClusterBrowser getBrowser() {
         return (ClusterBrowser) super.getBrowser();
     }
 
@@ -99,12 +102,14 @@ public final class ServicesInfo extends EditableInfo {
     }
 
     /** Returns icon for services menu item. */
-    @Override public ImageIcon getMenuIcon(final boolean testOnly) {
+    @Override
+    public ImageIcon getMenuIcon(final boolean testOnly) {
         return null;
     }
 
     /** Returns names of all global parameters. */
-    @Override public String[] getParametersFromXML() {
+    @Override
+    public String[] getParametersFromXML() {
         final CRMXML crmxml = getBrowser().getCRMXML();
         if (crmxml == null) {
             return null;
@@ -116,7 +121,8 @@ public final class ServicesInfo extends EditableInfo {
      * Returns long description of the global parameter, that is used for
      * tool tips.
      */
-    @Override protected String getParamLongDesc(final String param) {
+    @Override
+    protected String getParamLongDesc(final String param) {
         return getBrowser().getCRMXML().getGlobalParamLongDesc(param);
     }
 
@@ -124,22 +130,26 @@ public final class ServicesInfo extends EditableInfo {
      * Returns short description of the global parameter, that is used as
      * label.
      */
-    @Override protected String getParamShortDesc(final String param) {
+    @Override
+    protected String getParamShortDesc(final String param) {
         return getBrowser().getCRMXML().getGlobalParamShortDesc(param);
     }
 
     /** Returns default for this global parameter. */
-    @Override protected String getParamDefault(final String param) {
+    @Override
+    protected String getParamDefault(final String param) {
         return getBrowser().getCRMXML().getGlobalParamDefault(param);
     }
 
     /** Returns preferred value for this global parameter. */
-    @Override protected String getParamPreferred(final String param) {
+    @Override
+    protected String getParamPreferred(final String param) {
         return getBrowser().getCRMXML().getGlobalParamPreferred(param);
     }
 
     /** Returns possible choices for pulldown menus if applicable. */
-    @Override protected Object[] getParamPossibleChoices(final String param) {
+    @Override
+    protected Object[] getParamPossibleChoices(final String param) {
         return getBrowser().getCRMXML().getGlobalParamPossibleChoices(param);
     }
 
@@ -147,27 +157,31 @@ public final class ServicesInfo extends EditableInfo {
      * Checks if the new value is correct for the parameter type and
      * constraints.
      */
-    @Override protected boolean checkParam(final String param,
-                                           final String newValue) {
+    @Override
+    protected boolean checkParam(final String param, final String newValue) {
         return getBrowser().getCRMXML().checkGlobalParam(param, newValue);
     }
 
     /** Returns whether the global parameter is of the integer type. */
-    @Override protected boolean isInteger(final String param) {
+    @Override
+    protected boolean isInteger(final String param) {
         return getBrowser().getCRMXML().isGlobalInteger(param);
     }
     /** Returns whether the global parameter is of the label type. */
-    @Override protected boolean isLabel(final String param) {
+    @Override
+    protected boolean isLabel(final String param) {
         return getBrowser().getCRMXML().isGlobalLabel(param);
     }
 
     /** Returns whether the global parameter is of the time type. */
-    @Override protected boolean isTimeType(final String param) {
+    @Override
+    protected boolean isTimeType(final String param) {
         return getBrowser().getCRMXML().isGlobalTimeType(param);
     }
 
     /** Returns whether this parameter is advanced. */
-    @Override protected boolean isAdvanced(final String param) {
+    @Override
+    protected boolean isAdvanced(final String param) {
         if (!Tools.areEqual(getParamDefault(param),
                             getParamSaved(param))) {
             /* it changed, show it */
@@ -177,24 +191,26 @@ public final class ServicesInfo extends EditableInfo {
     }
 
     /** Returns access type of this parameter. */
-    @Override protected ConfigData.AccessType getAccessType(
-                                                         final String param) {
+    @Override
+    protected ConfigData.AccessType getAccessType(final String param) {
         return getBrowser().getCRMXML().getGlobalAccessType(param);
     }
 
     /** Whether the parameter should be enabled. */
-    @Override protected String isEnabled(final String param) {
+    @Override
+    protected String isEnabled(final String param) {
         return null;
     }
 
     /** Whether the parameter should be enabled only in advanced mode. */
-    @Override protected boolean isEnabledOnlyInAdvancedMode(
-                                                         final String param) {
+    @Override
+    protected boolean isEnabledOnlyInAdvancedMode(final String param) {
         return false;
     }
 
     /** Returns whether the global parameter is required. */
-    @Override protected boolean isRequired(final String param) {
+    @Override
+    protected boolean isRequired(final String param) {
         return getBrowser().getCRMXML().isGlobalRequired(param);
     }
 
@@ -202,17 +218,20 @@ public final class ServicesInfo extends EditableInfo {
      * Returns whether the global parameter is of boolean type and
      * requires a checkbox.
      */
-    @Override protected boolean isCheckBox(final String param) {
+    @Override
+    protected boolean isCheckBox(final String param) {
         return getBrowser().getCRMXML().isGlobalBoolean(param);
     }
 
     /** Returns type of the global parameter. */
-    @Override protected String getParamType(final String param) {
+    @Override
+    protected String getParamType(final String param) {
         return getBrowser().getCRMXML().getGlobalParamType(param);
     }
 
     /** Returns section to which the global parameter belongs. */
-    @Override protected String getSection(final String param) {
+    @Override
+    protected String getSection(final String param) {
         return getBrowser().getCRMXML().getGlobalSection(param);
     }
 
@@ -221,7 +240,8 @@ public final class ServicesInfo extends EditableInfo {
         final String[] params = getParametersFromXML();
         if (!testOnly) {
             Tools.invokeAndWait(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     getApplyButton().setEnabled(false);
                     getRevertButton().setEnabled(false);
                     getApplyButton().setToolTipText(null);
@@ -288,23 +308,23 @@ public final class ServicesInfo extends EditableInfo {
     }
 
     /** Sets heartbeat global parameters after they were obtained. */
-    public void setGlobalConfig() {
+    public void setGlobalConfig(final ClusterStatus clStatus) {
         final String[] params = getParametersFromXML();
         for (String param : params) {
-            final String value =
-                         getBrowser().getClusterStatus().getGlobalParam(param);
+            final String value = clStatus.getGlobalParam(param);
             final String oldValue = getParamSaved(param);
             if (value != null && !value.equals(oldValue)) {
                 getResource().setValue(param, value);
-                final GuiComboBox cb = paramComboBoxGet(param, null);
-                if (cb != null) {
-                    cb.setValue(value);
+                final Widget wi = getWidget(param, null);
+                if (wi != null) {
+                    wi.setValue(value);
                 }
             }
         }
         if (infoPanel == null) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     getInfoPanel();
                 }
             });
@@ -327,11 +347,11 @@ public final class ServicesInfo extends EditableInfo {
 
     /** Sets clone info object. */
     private CloneInfo setCreateCloneInfo(final String cloneId,
+                                         final ClusterStatus clStatus,
                                          final boolean testOnly) {
         CloneInfo newCi = null;
         newCi = (CloneInfo) getBrowser().getServiceInfoFromCRMId(cloneId);
         final HeartbeatGraph hg = getBrowser().getHeartbeatGraph();
-        final ClusterStatus clStatus = getBrowser().getClusterStatus();
         if (newCi == null) {
             final Point2D p = null;
             newCi =
@@ -364,11 +384,11 @@ public final class ServicesInfo extends EditableInfo {
     /** Sets group info object. */
     private GroupInfo setCreateGroupInfo(final String group,
                                          final CloneInfo newCi,
+                                         final ClusterStatus clStatus,
                                          final boolean testOnly) {
         GroupInfo newGi = null;
         newGi = (GroupInfo) getBrowser().getServiceInfoFromCRMId(group);
         final HeartbeatGraph hg = getBrowser().getHeartbeatGraph();
-        final ClusterStatus clStatus = getBrowser().getClusterStatus();
         if (newGi == null) {
             final Point2D p = null;
             newGi =
@@ -408,10 +428,10 @@ public final class ServicesInfo extends EditableInfo {
                                final CloneInfo newCi,
                                final List<ServiceInfo> serviceIsPresent,
                                final List<ServiceInfo> groupServiceIsPresent,
+                               final ClusterStatus clStatus,
                                final boolean testOnly) {
         final Map<ServiceInfo, Map<String, String>> setParametersHash =
                            new HashMap<ServiceInfo, Map<String, String>>();
-        final ClusterStatus clStatus = getBrowser().getClusterStatus();
         if (newCi != null) {
             setParametersHash.put(
                             newCi,
@@ -424,8 +444,12 @@ public final class ServicesInfo extends EditableInfo {
         final HeartbeatGraph hg = getBrowser().getHeartbeatGraph();
         boolean newService = false;
         int pos = 0;
-        for (final String hbId : clStatus.getGroupResources(grpOrCloneId,
-                                                            testOnly)) {
+        final List<String> gs = clStatus.getGroupResources(grpOrCloneId,
+                                                           testOnly);
+        if (gs == null) {
+            return;
+        }
+        for (final String hbId : gs) {
             if (clStatus.isOrphaned(hbId) && Tools.getConfigData().isNoLRM()) {
                 continue;
             }
@@ -436,13 +460,17 @@ public final class ServicesInfo extends EditableInfo {
                     continue;
                 }
                 /* clone group */
-                final GroupInfo gi = setCreateGroupInfo(hbId, newCi, testOnly);
+                final GroupInfo gi = setCreateGroupInfo(hbId,
+                                                        newCi,
+                                                        clStatus,
+                                                        testOnly);
                 setGroupResources(allGroupsAndClones,
                                   hbId,
                                   gi,
                                   null,
                                   serviceIsPresent,
                                   groupServiceIsPresent,
+                                  clStatus,
                                   testOnly);
                 newSi = (ServiceInfo) gi;
             } else {
@@ -530,7 +558,8 @@ public final class ServicesInfo extends EditableInfo {
             if (n != null) {
                 final int p = pos;
                 Tools.invokeAndWait(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         final DefaultMutableTreeNode parent =
                                         (DefaultMutableTreeNode) n.getParent();
                         if (parent != null) {
@@ -563,8 +592,11 @@ public final class ServicesInfo extends EditableInfo {
      * This functions goes through all services, constrains etc. in
      * clusterStatus and updates the internal structures and graph.
      */
-    public void setAllResources(final boolean testOnly) {
-        final ClusterStatus clStatus = getBrowser().getClusterStatus();
+    public void setAllResources(final ClusterStatus clStatus,
+                                final boolean testOnly) {
+        if (clStatus == null) {
+            return;
+        }
         final Set<String> allGroupsAndClones = clStatus.getAllGroups();
         final HeartbeatGraph hg = getBrowser().getHeartbeatGraph();
         final List<ServiceInfo> groupServiceIsPresent =
@@ -575,7 +607,7 @@ public final class ServicesInfo extends EditableInfo {
             GroupInfo newGi = null;
             if (clStatus.isClone(groupOrClone)) {
                 /* clone */
-                newCi = setCreateCloneInfo(groupOrClone, testOnly);
+                newCi = setCreateCloneInfo(groupOrClone, clStatus, testOnly);
                 serviceIsPresent.add(newCi);
             } else if (!"none".equals(groupOrClone)) {
                 /* group */
@@ -587,7 +619,10 @@ public final class ServicesInfo extends EditableInfo {
                     groupServiceIsPresent.add(gi);
                     continue;
                 }
-                newGi = setCreateGroupInfo(groupOrClone, newCi, testOnly);
+                newGi = setCreateGroupInfo(groupOrClone,
+                                           newCi,
+                                           clStatus,
+                                           testOnly);
                 serviceIsPresent.add(newGi);
             }
             setGroupResources(allGroupsAndClones,
@@ -596,6 +631,7 @@ public final class ServicesInfo extends EditableInfo {
                               newCi,
                               serviceIsPresent,
                               groupServiceIsPresent,
+                              clStatus,
                               testOnly);
         }
 
@@ -698,7 +734,10 @@ public final class ServicesInfo extends EditableInfo {
                     cphi.setRscSetConnectionData(rdata);
                 }
                 if (cphi == null) {
-                    cphi = new ConstraintPHInfo(getBrowser(), rdata);
+                    cphi = new ConstraintPHInfo(
+                                            getBrowser(),
+                                            rdata,
+                                            ConstraintPHInfo.Preference.AND);
                     if (prsi == null) {
                         prsi = new PcmkRscSetsInfo(getBrowser());
                     }
@@ -875,12 +914,14 @@ public final class ServicesInfo extends EditableInfo {
     }
 
     /** Clears the info panel cache, forcing it to reload. */
-    @Override boolean selectAutomaticallyInTreeMenu() {
+    @Override
+    boolean selectAutomaticallyInTreeMenu() {
         return infoPanel == null;
     }
 
     /** Returns type of the info text. text/plain or text/html. */
-    @Override protected String getInfoType() {
+    @Override
+    protected String getInfoType() {
         return Tools.MIME_TYPE_TEXT_HTML;
     }
 
@@ -888,7 +929,8 @@ public final class ServicesInfo extends EditableInfo {
      * Returns info for info panel, that hb status failed or null, in which
      * case the getInfoPanel() function will show.
      */
-    @Override String getInfo() {
+    @Override
+    String getInfo() {
         if (getBrowser().clStatusFailed()) {
             return Tools.getString("ClusterBrowser.ClStatusFailed");
         }
@@ -900,7 +942,7 @@ public final class ServicesInfo extends EditableInfo {
                                      final int leftWidth,
                                      final int rightWidth) {
         final RscDefaultsInfo rdi = getBrowser().getRscDefaultsInfo();
-        rdi.paramComboBoxClear();
+        rdi.widgetClear();
         final String[] params = rdi.getParametersFromXML();
         rdi.addParams(optionsPanel,
                       params,
@@ -910,7 +952,8 @@ public final class ServicesInfo extends EditableInfo {
     }
 
     /** Returns editable info panel for global crm config. */
-    @Override public JComponent getInfoPanel() {
+    @Override
+    public JComponent getInfoPanel() {
         /* if don't have hb status we don't have all the info we need here.
          * TODO: OR we need to get hb status only once
          */
@@ -934,7 +977,8 @@ public final class ServicesInfo extends EditableInfo {
             /**
              * Whether the whole thing should be enabled.
              */
-            @Override public boolean isEnabled() {
+            @Override
+            public boolean isEnabled() {
                 final Host dcHost = getBrowser().getDCHost();
                 if (dcHost == null) {
                     return false;
@@ -945,7 +989,8 @@ public final class ServicesInfo extends EditableInfo {
                 return true;
             }
 
-            @Override public void mouseOut() {
+            @Override
+            public void mouseOut() {
                 if (!isEnabled()) {
                     return;
                 }
@@ -954,7 +999,8 @@ public final class ServicesInfo extends EditableInfo {
                 getApplyButton().setToolTipText(null);
             }
 
-            @Override public void mouseOver() {
+            @Override
+            public void mouseOver() {
                 if (!isEnabled()) {
                     return;
                 }
@@ -1005,20 +1051,22 @@ public final class ServicesInfo extends EditableInfo {
         final String[] params = getParametersFromXML();
         addParams(optionsPanel,
                   params,
-                  Tools.getDefaultInt("ClusterBrowser.DrbdResLabelWidth"),
-                  Tools.getDefaultInt("ClusterBrowser.DrbdResFieldWidth"),
+                  Tools.getDefaultSize("ClusterBrowser.DrbdResLabelWidth"),
+                  Tools.getDefaultSize("ClusterBrowser.DrbdResFieldWidth"),
                   null);
 
         addRscDefaultsPanel(
                       optionsPanel,
-                      Tools.getDefaultInt("ClusterBrowser.DrbdResLabelWidth"),
-                      Tools.getDefaultInt("ClusterBrowser.DrbdResFieldWidth"));
+                      Tools.getDefaultSize("ClusterBrowser.DrbdResLabelWidth"),
+                      Tools.getDefaultSize("ClusterBrowser.DrbdResFieldWidth"));
         getApplyButton().addActionListener(
             new ActionListener() {
-                @Override public void actionPerformed(final ActionEvent e) {
+                @Override
+                public void actionPerformed(final ActionEvent e) {
                     final Thread thread = new Thread(
                         new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 getBrowser().clStatusLock();
                                 apply(getBrowser().getDCHost(), false);
                                 getBrowser().clStatusUnlock();
@@ -1031,9 +1079,11 @@ public final class ServicesInfo extends EditableInfo {
         );
         getRevertButton().addActionListener(
             new ActionListener() {
-                @Override public void actionPerformed(final ActionEvent e) {
+                @Override
+                public void actionPerformed(final ActionEvent e) {
                     final Thread thread = new Thread(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             getBrowser().clStatusLock();
                             revert();
                             getBrowser().clStatusUnlock();
@@ -1048,7 +1098,8 @@ public final class ServicesInfo extends EditableInfo {
         addApplyButton(buttonPanel);
         addRevertButton(buttonPanel);
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 setApplyButtons(null, params);
             }
         });
@@ -1068,7 +1119,8 @@ public final class ServicesInfo extends EditableInfo {
     }
 
     /** Returns heartbeat graph. */
-    @Override public JPanel getGraphicalView() {
+    @Override
+    public JPanel getGraphicalView() {
         return getBrowser().getHeartbeatGraph().getGraphPanel();
     }
 
@@ -1168,7 +1220,8 @@ public final class ServicesInfo extends EditableInfo {
             }
             getBrowser().reloadAllComboBoxes(newServiceInfo);
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     hg.scale();
                 }
             });
@@ -1185,7 +1238,8 @@ public final class ServicesInfo extends EditableInfo {
      * Returns background popup. Click on background represents cluster as
      * whole.
      */
-    @Override public List<UpdatableItem> createPopup() {
+    @Override
+    public List<UpdatableItem> createPopup() {
         final List<UpdatableItem> items = new ArrayList<UpdatableItem>();
         final boolean testOnly = false;
 
@@ -1200,14 +1254,16 @@ public final class ServicesInfo extends EditableInfo {
                                           false)) {
                 private static final long serialVersionUID = 1L;
 
-                @Override public String enablePredicate() {
+                @Override
+                public String enablePredicate() {
                     if (getBrowser().clStatusFailed()) {
                         return ClusterBrowser.UNKNOWN_CLUSTER_STATUS_STRING;
                     }
                     return null;
                 }
 
-                @Override public void action() {
+                @Override
+                public void action() {
                     hidePopup();
                     addServicePanel(getBrowser().getCRMXML().getHbGroup(),
                                     getPos(),
@@ -1231,16 +1287,19 @@ public final class ServicesInfo extends EditableInfo {
             private static final long serialVersionUID = 1L;
             private final Lock mUpdateLock = new ReentrantLock();
 
-            @Override public String enablePredicate() {
+            @Override
+            public String enablePredicate() {
                 if (getBrowser().clStatusFailed()) {
                     return ClusterBrowser.UNKNOWN_CLUSTER_STATUS_STRING;
                 }
                 return null;
             }
 
-            @Override public void update() {
+            @Override
+            public void update() {
                 final Thread t = new Thread(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         if (mUpdateLock.tryLock()) {
                             try {
                                 updateThread();
@@ -1254,12 +1313,14 @@ public final class ServicesInfo extends EditableInfo {
             }
             private void updateThread() {
                 SwingUtilities.invokeLater(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         setEnabled(false);
                     }
                 });
                 Tools.invokeAndWait(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         removeAll();
                     }
                 });
@@ -1282,7 +1343,8 @@ public final class ServicesInfo extends EditableInfo {
                      new AccessMode(ConfigData.AccessType.OP,
                                     false)) {
                         private static final long serialVersionUID = 1L;
-                        @Override public void action() {
+                        @Override
+                        public void action() {
                             hidePopup();
                             if (!getBrowser().linbitDrbdConfirmDialog()) {
                                 return;
@@ -1306,7 +1368,8 @@ public final class ServicesInfo extends EditableInfo {
                     }
                     ldMenuItem.setPos(pos);
                     SwingUtilities.invokeLater(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             add(ldMenuItem);
                         }
                     });
@@ -1326,7 +1389,8 @@ public final class ServicesInfo extends EditableInfo {
                                         new AccessMode(ConfigData.AccessType.OP,
                                                        false)) {
                         private static final long serialVersionUID = 1L;
-                        @Override public void action() {
+                        @Override
+                        public void action() {
                             hidePopup();
                             addServicePanel(ipService,
                                             getPos(),
@@ -1339,7 +1403,8 @@ public final class ServicesInfo extends EditableInfo {
                     };
                     ipMenuItem.setPos(pos);
                     SwingUtilities.invokeLater(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             add(ipMenuItem);
                         }
                     });
@@ -1359,7 +1424,8 @@ public final class ServicesInfo extends EditableInfo {
                      new AccessMode(ConfigData.AccessType.OP,
                                     false)) {
                         private static final long serialVersionUID = 1L;
-                        @Override public void action() {
+                        @Override
+                        public void action() {
                             hidePopup();
                             final FilesystemInfo fsi = (FilesystemInfo)
                                                            addServicePanel(
@@ -1379,7 +1445,8 @@ public final class ServicesInfo extends EditableInfo {
                     }
                     ddMenuItem.setPos(pos);
                     SwingUtilities.invokeLater(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             add(ddMenuItem);
                         }
                     });
@@ -1406,7 +1473,8 @@ public final class ServicesInfo extends EditableInfo {
                                                     ConfigData.AccessType.OP,
                                                     false)) {
                             private static final long serialVersionUID = 1L;
-                            @Override public void action() {
+                            @Override
+                            public void action() {
                                 hidePopup();
                                 for (final JDialog otherP : popups) {
                                     otherP.dispose();
@@ -1445,7 +1513,8 @@ public final class ServicesInfo extends EditableInfo {
                         classItem.setEnabled(false);
                     }
                     SwingUtilities.invokeLater(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             add(classItem);
                         }
                     });
@@ -1455,47 +1524,107 @@ public final class ServicesInfo extends EditableInfo {
         };
         items.add((UpdatableItem) addServiceMenuItem);
 
-        /* add constraint placeholder */
-        final MyMenuItem addConstraintPlaceholder =
+        /* add constraint placeholder (and) */
+        final MyMenuItem addConstraintPlaceholderAnd =
             new MyMenuItem(Tools.getString(
-                                     "ServicesInfo.AddConstraintPlaceholder"),
+                                 "ServicesInfo.AddConstraintPlaceholderAnd"),
                            null,
                            Tools.getString(
-                             "ServicesInfo.AddConstraintPlaceholder.ToolTip"),
+                            "ServicesInfo.AddConstraintPlaceholderAnd.ToolTip"),
                            new AccessMode(ConfigData.AccessType.ADMIN,
                                           false),
                            new AccessMode(ConfigData.AccessType.OP,
                                           false)) {
                 private static final long serialVersionUID = 1L;
 
-                @Override public String enablePredicate() {
+                @Override
+                public String enablePredicate() {
                     if (getBrowser().clStatusFailed()) {
                         return ClusterBrowser.UNKNOWN_CLUSTER_STATUS_STRING;
                     }
                     return null;
                 }
 
-                @Override public void action() {
+                @Override
+                public void action() {
                     hidePopup();
                     final HeartbeatGraph hg = getBrowser().getHeartbeatGraph();
                     final ConstraintPHInfo cphi =
-                                      new ConstraintPHInfo(getBrowser(), null);
+                         new ConstraintPHInfo(getBrowser(),
+                                              null,
+                                              ConstraintPHInfo.Preference.AND);
                     cphi.getService().setNew(true);
                     getBrowser().addNameToServiceInfoHash(cphi);
-                    hg.addConstraintPlaceholder(cphi,
-                                                getPos(),
-                                                testOnly);
+                    hg.addConstraintPlaceholder(cphi, getPos(), testOnly);
                     final PcmkRscSetsInfo prsi =
                                       new PcmkRscSetsInfo(getBrowser(), cphi);
                     cphi.setPcmkRscSetsInfo(prsi);
                     SwingUtilities.invokeLater(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             hg.scale();
                         }
                     });
                 }
             };
-        items.add((UpdatableItem) addConstraintPlaceholder);
+        items.add((UpdatableItem) addConstraintPlaceholderAnd);
+
+        /* add constraint placeholder (or) */
+        final MyMenuItem addConstraintPlaceholderOr =
+            new MyMenuItem(Tools.getString(
+                                 "ServicesInfo.AddConstraintPlaceholderOr"),
+                           null,
+                           Tools.getString(
+                            "ServicesInfo.AddConstraintPlaceholderOr.ToolTip"),
+                           new AccessMode(ConfigData.AccessType.ADMIN,
+                                          false),
+                           new AccessMode(ConfigData.AccessType.OP,
+                                          false)) {
+                private static final long serialVersionUID = 1L;
+
+                @Override
+                public String enablePredicate() {
+                    final String pmV =
+                                getBrowser().getDCHost().getPacemakerVersion();
+                    try {
+                        //TODO: get this from constraints-.rng files
+                        if (pmV == null
+                            || Tools.compareVersions(pmV, "1.1.7") <= 0) {
+                            return HbOrderInfo.NOT_AVAIL_FOR_PCMK_VERSION;
+                        }
+                    } catch (Exceptions.IllegalVersionException e) {
+                        Tools.appWarning("unkonwn version: " + pmV);
+                        /* enable it, if version check doesn't work */
+                    }
+                    if (getBrowser().clStatusFailed()) {
+                        return ClusterBrowser.UNKNOWN_CLUSTER_STATUS_STRING;
+                    }
+                    return null;
+                }
+
+                @Override
+                public void action() {
+                    hidePopup();
+                    final HeartbeatGraph hg = getBrowser().getHeartbeatGraph();
+                    final ConstraintPHInfo cphi =
+                         new ConstraintPHInfo(getBrowser(),
+                                              null,
+                                              ConstraintPHInfo.Preference.OR);
+                    cphi.getService().setNew(true);
+                    getBrowser().addNameToServiceInfoHash(cphi);
+                    hg.addConstraintPlaceholder(cphi, getPos(), testOnly);
+                    final PcmkRscSetsInfo prsi =
+                                      new PcmkRscSetsInfo(getBrowser(), cphi);
+                    cphi.setPcmkRscSetsInfo(prsi);
+                    SwingUtilities.invokeLater(new Runnable() {
+                        @Override
+                        public void run() {
+                            hg.scale();
+                        }
+                    });
+                }
+            };
+        items.add((UpdatableItem) addConstraintPlaceholderOr);
 
         /* stop all services. */
         final MyMenuItem stopAllMenuItem = new MyMenuItem(
@@ -1505,7 +1634,8 @@ public final class ServicesInfo extends EditableInfo {
                 new AccessMode(ConfigData.AccessType.ADMIN, false)) {
             private static final long serialVersionUID = 1L;
 
-            @Override public String enablePredicate() {
+            @Override
+            public String enablePredicate() {
                 if (getBrowser().clStatusFailed()) {
                     return ClusterBrowser.UNKNOWN_CLUSTER_STATUS_STRING;
                 }
@@ -1521,7 +1651,8 @@ public final class ServicesInfo extends EditableInfo {
                 return "all services are stopped";
             }
 
-            @Override public void action() {
+            @Override
+            public void action() {
                 hidePopup();
                 final Host dcHost = getBrowser().getDCHost();
                 for (final ServiceInfo si
@@ -1538,7 +1669,8 @@ public final class ServicesInfo extends EditableInfo {
         };
         final ClusterBrowser.ClMenuItemCallback stopAllItemCallback =
                    getBrowser().new ClMenuItemCallback(stopAllMenuItem, null) {
-            @Override public void action(final Host dcHost) {
+            @Override
+            public void action(final Host dcHost) {
                 final Host thisDCHost = getBrowser().getDCHost();
                 for (final ServiceInfo si
                         : getBrowser().getExistingServiceList(null)) {
@@ -1563,11 +1695,13 @@ public final class ServicesInfo extends EditableInfo {
                 new AccessMode(ConfigData.AccessType.OP, false)) {
             private static final long serialVersionUID = 1L;
 
-            @Override public boolean visiblePredicate() {
+            @Override
+            public boolean visiblePredicate() {
                 return enablePredicate() == null;
             }
 
-            @Override public String enablePredicate() {
+            @Override
+            public String enablePredicate() {
                 if (getBrowser().clStatusFailed()) {
                     return ClusterBrowser.UNKNOWN_CLUSTER_STATUS_STRING;
                 }
@@ -1584,7 +1718,8 @@ public final class ServicesInfo extends EditableInfo {
                 return "nothing to unmigrate";
             }
 
-            @Override public void action() {
+            @Override
+            public void action() {
                 hidePopup();
                 final Host dcHost = getBrowser().getDCHost();
                 for (final ServiceInfo si
@@ -1599,7 +1734,8 @@ public final class ServicesInfo extends EditableInfo {
         };
         final ClusterBrowser.ClMenuItemCallback unmigrateAllItemCallback =
                getBrowser().new ClMenuItemCallback(unmigrateAllMenuItem, null) {
-            @Override public void action(final Host dcHost) {
+            @Override
+            public void action(final Host dcHost) {
                 final Host thisDCHost = getBrowser().getDCHost();
                 for (final ServiceInfo si
                                 : getBrowser().getExistingServiceList(null)) {
@@ -1621,7 +1757,8 @@ public final class ServicesInfo extends EditableInfo {
                 new AccessMode(ConfigData.AccessType.ADMIN, true)) {
             private static final long serialVersionUID = 1L;
 
-            @Override public String enablePredicate() {
+            @Override
+            public String enablePredicate() {
                 if (getBrowser().clStatusFailed()) {
                     return ClusterBrowser.UNKNOWN_CLUSTER_STATUS_STRING;
                 }
@@ -1639,7 +1776,8 @@ public final class ServicesInfo extends EditableInfo {
                 return null;
             }
 
-            @Override public void action() {
+            @Override
+            public void action() {
                 hidePopup();
                 if (Tools.confirmDialog(
                      Tools.getString(
@@ -1685,7 +1823,8 @@ public final class ServicesInfo extends EditableInfo {
         };
         final ClusterBrowser.ClMenuItemCallback removeItemCallback =
                getBrowser().new ClMenuItemCallback(removeMenuItem, null) {
-            @Override public void action(final Host dcHost) {
+            @Override
+            public void action(final Host dcHost) {
                 final Host thisDCHost = getBrowser().getDCHost();
                 CRM.erase(dcHost, true); /* test only */
             }
@@ -1704,11 +1843,13 @@ public final class ServicesInfo extends EditableInfo {
                                           false)) {
                 private static final long serialVersionUID = 1L;
 
-                @Override public String enablePredicate() {
+                @Override
+                public String enablePredicate() {
                     return null;
                 }
 
-                @Override public void action() {
+                @Override
+                public void action() {
                     ClusterLogs l = new ClusterLogs(getBrowser().getCluster());
                     l.showDialog();
                 }
@@ -1718,7 +1859,8 @@ public final class ServicesInfo extends EditableInfo {
     }
 
     /** Returns units. */
-    @Override protected Unit[] getUnits() {
+    @Override
+    protected Unit[] getUnits() {
         return new Unit[]{
             new Unit("", "s", "Second", "Seconds"), /* default unit */
             new Unit("ms",  "ms", "Millisecond", "Milliseconds"),
@@ -1735,8 +1877,9 @@ public final class ServicesInfo extends EditableInfo {
      * parameters will be checked only in the cache. This is good if only
      * one value is changed and we don't want to check everything.
      */
-    @Override boolean checkResourceFieldsCorrect(final String param,
-                                                 final String[] params) {
+    @Override
+    boolean checkResourceFieldsCorrect(final String param,
+                                       final String[] params) {
         final RscDefaultsInfo rdi = getBrowser().getRscDefaultsInfo();
         boolean ret = true;
         if (!rdi.checkResourceFieldsCorrect(param,
@@ -1764,8 +1907,9 @@ public final class ServicesInfo extends EditableInfo {
      * have changed. If param is null, only param will be checked,
      * otherwise all parameters will be checked.
      */
-    @Override public boolean checkResourceFieldsChanged(final String param,
-                                                        final String[] params) {
+    @Override
+    public boolean checkResourceFieldsChanged(final String param,
+                                              final String[] params) {
         boolean changed = false;
         final RscDefaultsInfo rdi = getBrowser().getRscDefaultsInfo();
         if (super.checkResourceFieldsChanged(param, params)) {
@@ -1789,7 +1933,8 @@ public final class ServicesInfo extends EditableInfo {
     }
 
     /** Revert all values. */
-    @Override public void revert() {
+    @Override
+    public void revert() {
         super.revert();
         final RscDefaultsInfo rdi = getBrowser().getRscDefaultsInfo();
         rdi.revert();
@@ -1803,5 +1948,173 @@ public final class ServicesInfo extends EditableInfo {
             }
         }
         //TODO: should remove new resources and constraints
+    }
+
+    /**
+     * Copy/paste field from one field to another.
+     */
+    private void copyPasteField(final Widget oldWi, final Widget newWi) {
+        if (newWi == null || oldWi == null) {
+            return;
+        }
+        final String oldValue = oldWi.getStringValue();
+        SwingUtilities.invokeLater(new Runnable() {
+            public void run() {
+                if ("".equals(oldValue)) {
+                    newWi.setValueNoListeners(null);
+                } else {
+                    newWi.setValueNoListeners(oldValue);
+                }
+            }
+        });
+    }
+
+    private void copyPasteFields(final ServiceInfo oldSi,
+                                 final ServiceInfo newSi) {
+        /* parameters */
+        for (final String param : oldSi.getParametersFromXML()) {
+            if (ServiceInfo.GUI_ID.equals(param)
+                || ServiceInfo.PCMK_ID.equals(param)) {
+                if (getBrowser().isCRMId(oldSi.getService().getHeartbeatId())) {
+                    continue;
+                }
+            }
+            copyPasteField(oldSi.getWidget(param, null),
+                           newSi.getWidget(param, null));
+        }
+
+        /* operations */
+        copyPasteField(oldSi.getSameAsOperationsWi(),
+                       newSi.getSameAsOperationsWi());
+
+        for (final String op : oldSi.getResourceAgent().getOperationNames()) {
+            for (final String param
+                          : getBrowser().getCRMOperationParams(op)) {
+                copyPasteField(oldSi.getOperationsComboBox(op, param),
+                               newSi.getOperationsComboBox(op, param));
+            }
+        }
+
+        /* locations */
+        for (final Host host : getBrowser().getClusterHosts()) {
+            final HostInfo hi = host.getBrowser().getHostInfo();
+            copyPasteField(oldSi.getScoreComboBoxHash().get(hi),
+                           newSi.getScoreComboBoxHash().get(hi));
+        }
+        /* ping */
+        copyPasteField(oldSi.getPingComboBox(),
+                       newSi.getPingComboBox());
+    }
+
+    public void pasteServices(final List<Info> oldInfos) {
+        if (oldInfos.size() == 0) {
+            return;
+        }
+        final String cn = getBrowser().getCluster().getName();
+        Tools.startProgressIndicator(cn, "paste");
+        final ClusterBrowser otherBrowser =
+                                (ClusterBrowser) oldInfos.get(0).getBrowser();
+        getBrowser().getClusterViewPanel().setDisabledDuringLoad(true);
+        otherBrowser.getClusterViewPanel().setDisabledDuringLoad(true);
+        for (Info oldI : oldInfos) {
+            CloneInfo oci = null;
+            if (oldI instanceof CloneInfo) {
+                oci = (CloneInfo) oldI;
+                oldI = oci.getContainedService();
+            }
+            final CloneInfo oldCi = oci;
+            if (oldI instanceof ServiceInfo) {
+                final ServiceInfo oldSi = (ServiceInfo) oldI;
+                final ServiceInfo newSi =
+                    addServicePanel(oldSi.getResourceAgent(),
+                                    null, /* pos */
+                                    true,
+                                    null, /* clone id */
+                                    null,
+                                    CRM.LIVE);
+                SwingUtilities.invokeLater(new Runnable() {
+                    public void run() {
+                        if (!(newSi instanceof CloneInfo)) {
+                            oldSi.getInfoPanel();
+                            newSi.getInfoPanel();
+                            oldSi.waitForInfoPanel();
+                            newSi.waitForInfoPanel();
+                        }
+                        if (oldCi != null) {
+                            final CloneInfo oci = oldCi;
+                            final String v =
+                                    newSi.getTypeRadioGroup().getStringValue();
+                            if (oci.getService().isMaster()) {
+                                if (!ServiceInfo.MASTER_SLAVE_TYPE_STRING.equals(v)) {
+                                    newSi.getTypeRadioGroup().setValue(
+                                         ServiceInfo.MASTER_SLAVE_TYPE_STRING);
+                                }
+                            } else {
+                                if (!ServiceInfo.CLONE_TYPE_STRING.equals(v)) {
+                                    newSi.getTypeRadioGroup().setValue(
+                                                ServiceInfo.CLONE_TYPE_STRING);
+                                }
+                            }
+                        }
+                        copyPasteFields(oldSi, newSi);
+                    }
+                });
+
+                /* clone parameters */
+                final CloneInfo newCi = newSi.getCloneInfo();
+                if (newCi != null) {
+                    final CloneInfo oldCi0 = oldCi;
+                    for (final String param : oldCi0.getParametersFromXML()) {
+                        if (ServiceInfo.GUI_ID.equals(param)
+                            || ServiceInfo.PCMK_ID.equals(param)) {
+                            if (getBrowser().isCRMId(
+                                    oldCi0.getService().getHeartbeatId())) {
+                                continue;
+                            }
+                        }
+                        SwingUtilities.invokeLater(new Runnable() {
+                            public void run() {
+                                copyPasteField(oldCi0.getWidget(param, null),
+                                               newCi.getWidget(param, null));
+                            }
+                        });
+                    }
+                }
+                if (oldI instanceof GroupInfo) {
+                    final GroupInfo oldGi = (GroupInfo) oldI;
+                    final GroupInfo newGi = (GroupInfo) newSi;
+
+                    final Enumeration e = oldGi.getNode().children();
+                    while (e.hasMoreElements()) {
+                        final DefaultMutableTreeNode n =
+                                      (DefaultMutableTreeNode) e.nextElement();
+                        final ServiceInfo oldChild =
+                                            (ServiceInfo) n.getUserObject();
+                        oldChild.getInfoPanel();
+                        oldChild.waitForInfoPanel();
+                        final ServiceInfo newChild =
+                                              newGi.addGroupServicePanel(
+                                                    oldChild.getResourceAgent(),
+                                                    false);
+                        newChild.getInfoPanel();
+                        newChild.waitForInfoPanel();
+                        Tools.waitForSwing();
+                        SwingUtilities.invokeLater(new Runnable() {
+                            public void run() {
+                                copyPasteFields(oldChild, newChild);
+                            }
+                        });
+                    }
+                    SwingUtilities.invokeLater(new Runnable() {
+                        public void run() {
+                            getBrowser().reload(newGi.getNode(), false);
+                        }
+                    });
+                }
+            }
+        }
+        Tools.stopProgressIndicator(cn, "paste");
+        otherBrowser.getClusterViewPanel().setDisabledDuringLoad(false);
+        getBrowser().getClusterViewPanel().setDisabledDuringLoad(false);
     }
 }

@@ -14,6 +14,7 @@
         <project.reporting.outputEncoding>
         UTF-8
         </project.reporting.outputEncoding>
+        <jmockit.version>0.999.15</jmockit.version>
     </properties>
 
     <dependencies>
@@ -46,6 +47,13 @@
             <groupId>junit</groupId>
             <artifactId>junit</artifactId>
             <version>4.10</version>
+            <scope>test</scope> 
+        </dependency>
+        <dependency>
+            <groupId>com.googlecode.jmockit</groupId>
+            <artifactId>jmockit-coverage</artifactId>
+            <version>${jmockit.version}</version>
+            <scope>test</scope> 
         </dependency>
     </dependencies>
 
@@ -129,13 +137,20 @@
             <plugin>
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
+                    <systemPropertyVariables>
+                        <test.cluster>true</test.cluster>
+                        <test.connect>false</test.connect>
+                        <test.count>2</test.count>
+                        <test.password>rastislav</test.password>
+                        <test.quick>false</test.quick>
+                        <test.interactive>false</test.interactive>
+                    </systemPropertyVariables>
                     <outputDirectory>${basedir}/target/checks/surefire-reports</outputDirectory>
-                    <testFailureIgnore>true</testFailureIgnore>
                     <includes>
                         <include>**/*Test1.java</include>
                     </includes>
                     <excludes>
-                        <exclude>**/TestSuite*</exclude>
+                        <exclude>**/TestSuite*.java</exclude>
                     </excludes>
                 </configuration>
                 <executions>
@@ -224,6 +239,47 @@
                           <descriptorRef>jar-with-dependencies</descriptorRef>
                       </descriptorRefs>
                   </configuration>
+              </plugin>
+              <plugin>
+                <artifactId>maven-antrun-plugin</artifactId>
+                <version>1.1</version>
+                <executions>
+                  <execution>
+                    <phase>generate-sources</phase>
+                    <configuration>
+                      <tasks>
+                        <mkdir dir="${project.build.directory}/classes"/>
+                        <copy todir="${project.build.directory}/classes">
+                                <fileset dir="src/main/resources/"/>
+                        </copy>
+                        <tar tarfile="${project.build.directory}/classes/lcmc-test.tar"
+                             basedir="${project.build.directory}/classes/"
+                             includes="lcmc-test/**"/>
+
+                      </tasks>
+                    </configuration>
+                    <goals>
+                      <goal>run</goal>
+                    </goals>
+                  </execution>
+                </executions>
+              </plugin>
+              <plugin>
+                  <artifactId>maven-surefire-plugin</artifactId><version>2.6</version>
+                  <configuration>
+                      <argLine>
+                         -Djmockit-coverage-outputDir=target/my-coverage-report
+                      </argLine>
+                  </configuration>
+              </plugin>
+              <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <!--
+                <configuration>
+                  <argLine>-javaagent:${settings.localRepository}/com/googlecode/jmockit/jmockit/${jmockit.version}/jmockit-${jmockit.version}.jar=coverage=:html:./target/coverage-report</argLine>
+                </configuration>
+                -->
               </plugin>
           </plugins>
       </build>

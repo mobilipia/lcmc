@@ -24,13 +24,15 @@ package lcmc.gui.dialog.drbdConfig;
 
 import lcmc.utilities.Tools;
 import lcmc.utilities.ExecCallback;
+import lcmc.gui.ClusterBrowser;
 import lcmc.gui.SpringUtilities;
 import lcmc.gui.resources.BlockDevInfo;
 import lcmc.gui.resources.DrbdVolumeInfo;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.gui.dialog.WizardDialog;
 import lcmc.utilities.MyButton;
 import lcmc.utilities.DRBD;
+import lcmc.utilities.WidgetListener;
 import lcmc.data.ConfigData;
 import lcmc.data.AccessMode;
 
@@ -59,7 +61,7 @@ final class CreateMD extends DrbdConfig {
     /** Serial Version UID. */
     private static final long serialVersionUID = 1L;
     /** Metadata pulldown choices. */
-    private GuiComboBox metadataCB;
+    private Widget metadataWi;
     /** Make Meta-Data button. */
     private final MyButton makeMDButton = new MyButton();
     /** Width of the combo boxes. */
@@ -69,14 +71,15 @@ final class CreateMD extends DrbdConfig {
 
     /** Prepares a new <code>CreateMD</code> object. */
     CreateMD(final WizardDialog previousDialog,
-                       final DrbdVolumeInfo dli) {
-        super(previousDialog, dli);
+                       final DrbdVolumeInfo dvi) {
+        super(previousDialog, dvi);
     }
 
     /** Creates meta-data and checks the results. */
     private void createMetadata(final boolean destroyData) {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 makeMDButton.setEnabled(false);
             }
         });
@@ -92,12 +95,15 @@ final class CreateMD extends DrbdConfig {
             returnCode[index] = -1;
             thread[i] = new Thread(
             new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     final ExecCallback execCallback =
                         new ExecCallback() {
-                            @Override public void done(final String ans) {
+                            @Override
+                            public void done(final String ans) {
                                 SwingUtilities.invokeLater(new Runnable() {
-                                    @Override public void run() {
+                                    @Override
+                                    public void run() {
                                         makeMDButton.setEnabled(false);
                                     }
                                 });
@@ -105,7 +111,8 @@ final class CreateMD extends DrbdConfig {
                                 returnCode[index] = 0;
                             }
 
-                            @Override public void doneError(final String ans,
+                            @Override
+                            public void doneError(final String ans,
                                                   final int exitCode) {
                                 answer[index] = ans;
                                 returnCode[index] = exitCode;
@@ -169,7 +176,8 @@ final class CreateMD extends DrbdConfig {
             answerPaneSetTextError(Tools.join("\n", answer));
         } else {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     makeMDButton.setEnabled(false);
                     buttonClass(nextButton()).setEnabled(true);
                     if (Tools.getConfigData().getAutoOptionGlobal(
@@ -186,10 +194,13 @@ final class CreateMD extends DrbdConfig {
      * Returns next dialog plus it calls drbd up command for both devices and
      * returns the drbd config create fs dialog.
      */
-    @Override public WizardDialog nextDialog() {
+    @Override
+    public WizardDialog nextDialog() {
         final BlockDevInfo bdi1 = getDrbdVolumeInfo().getFirstBlockDevInfo();
         final BlockDevInfo bdi2 = getDrbdVolumeInfo().getSecondBlockDevInfo();
         final boolean testOnly = false;
+        final String clusterName = bdi1.getHost().getCluster().getName();
+        Tools.startProgressIndicator(clusterName, "scanning block devices...");
         DRBD.adjust(bdi1.getHost(),
                     getDrbdVolumeInfo().getDrbdResourceInfo().getName(),
                     getDrbdVolumeInfo().getName(),
@@ -198,6 +209,16 @@ final class CreateMD extends DrbdConfig {
                     getDrbdVolumeInfo().getDrbdResourceInfo().getName(),
                     getDrbdVolumeInfo().getName(),
                     testOnly);
+        final String device = getDrbdVolumeInfo().getDevice();
+        final ClusterBrowser browser = 
+                        getDrbdVolumeInfo().getDrbdResourceInfo().getBrowser();
+        browser.updateHWInfo(bdi1.getHost());
+        browser.updateHWInfo(bdi2.getHost());
+        bdi1.getBlockDevice().setDrbdBlockDevice(
+                                bdi1.getHost().getDrbdBlockDevice(device));
+        bdi2.getBlockDevice().setDrbdBlockDevice(
+                                bdi2.getHost().getDrbdBlockDevice(device));
+        Tools.stopProgressIndicator(clusterName, "scanning block devices...");
         return new CreateFS(this, getDrbdVolumeInfo());
     }
 
@@ -205,7 +226,8 @@ final class CreateMD extends DrbdConfig {
      * Returns the title of the dialog. This is specified as
      * Dialog.DrbdConfig.CreateMD.Title in the TextResources.
      */
-    @Override protected String getDialogTitle() {
+    @Override
+    protected String getDialogTitle() {
         return Tools.getString("Dialog.DrbdConfig.CreateMD.Title");
     }
 
@@ -213,12 +235,14 @@ final class CreateMD extends DrbdConfig {
      * Returns the description of the dialog. This is specified as
      * Dialog.DrbdConfig.CreateMD.Description in the TextResources.
      */
-    @Override protected String getDescription() {
+    @Override
+    protected String getDescription() {
         return Tools.getString("Dialog.DrbdConfig.CreateMD.Description");
     }
 
     /** Inits dialog. */
-    @Override protected void initDialog() {
+    @Override
+    protected void initDialog() {
         super.initDialog();
         makeMDButton.setBackgroundColor(
                                Tools.getDefaultColor("ConfigDialog.Button"));
@@ -230,11 +254,13 @@ final class CreateMD extends DrbdConfig {
     }
 
     /** Inits the dialog after it becomes visible. */
-    @Override protected void initDialogAfterVisible() {
+    @Override
+    protected void initDialogAfterVisible() {
         enableComponents();
         if (Tools.getConfigData().getAutoOptionGlobal("autodrbd") != null) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     makeMDButton.pressButton();
                 }
             });
@@ -242,7 +268,8 @@ final class CreateMD extends DrbdConfig {
     }
 
     /** Returns input pane with choices what to do with meta-data. */
-    @Override protected JComponent getInputPane() {
+    @Override
+    protected JComponent getInputPane() {
         final JPanel pane = new JPanel(new SpringLayout());
         final JPanel inputPane = new JPanel(new SpringLayout());
 
@@ -262,16 +289,16 @@ final class CreateMD extends DrbdConfig {
             makeMDButton.setText(
                  Tools.getString("Dialog.DrbdConfig.CreateMD.CreateMDButton"));
             final String metadataDefault = createNewMetadata;
-            metadataCB = new GuiComboBox(metadataDefault,
-                                         choices,
-                                         null, /* units */
-                                         GuiComboBox.Type.COMBOBOX,
-                                         null, /* regexp */
-                                         COMBOBOX_WIDTH,
-                                         null, /* abbrv */
-                                         new AccessMode(
-                                                  ConfigData.AccessType.RO,
-                                                  false)); /* only adv. mode */
+            metadataWi = new Widget(metadataDefault,
+                                    choices,
+                                    null, /* units */
+                                    Widget.Type.COMBOBOX,
+                                    null, /* regexp */
+                                    COMBOBOX_WIDTH,
+                                    null, /* abbrv */
+                                    new AccessMode(
+                                             ConfigData.AccessType.RO,
+                                             false)); /* only adv. mode */
         } else {
             final String[] choices = {useExistingMetadata,
                                       createNewMetadata,
@@ -284,43 +311,43 @@ final class CreateMD extends DrbdConfig {
                 metadataDefault = createNewMetadata;
                 makeMDButton.setEnabled(true);
             }
-            metadataCB = new GuiComboBox(metadataDefault,
-                                         choices,
-                                         null, /* units */
-                                         GuiComboBox.Type.COMBOBOX,
-                                         null, /* regexp */
-                                         COMBOBOX_WIDTH,
-                                         null, /* abbrv */
-                                         new AccessMode(
-                                                  ConfigData.AccessType.RO,
-                                                  false)); /* only adv. mode */
+            metadataWi = new Widget(metadataDefault,
+                                    choices,
+                                    null, /* units */
+                                    Widget.Type.COMBOBOX,
+                                    null, /* regexp */
+                                    COMBOBOX_WIDTH,
+                                    null, /* abbrv */
+                                    new AccessMode(
+                                             ConfigData.AccessType.RO,
+                                             false)); /* only adv. mode */
         }
 
         inputPane.add(metadataLabel);
-        inputPane.add(metadataCB);
-        metadataCB.addListeners(
-            new  ItemListener() {
-                @Override public void itemStateChanged(final ItemEvent e) {
-                    if (e.getStateChange() == ItemEvent.SELECTED) {
-                        if (metadataCB.getStringValue().equals(
-                                                    useExistingMetadata)) {
-                            makeMDButton.setEnabled(false);
-                            buttonClass(nextButton()).setEnabled(true);
-                        } else {
-                            buttonClass(nextButton()).setEnabled(false);
-                            makeMDButton.setEnabled(true);
-                        }
+        inputPane.add(metadataWi);
+        metadataWi.addListeners(
+            new WidgetListener() {
+                @Override
+                public void check(final Object value) {
+                    if (metadataWi.getStringValue().equals(
+                                                useExistingMetadata)) {
+                        makeMDButton.setEnabled(false);
+                        buttonClass(nextButton()).setEnabled(true);
+                    } else {
+                        buttonClass(nextButton()).setEnabled(false);
+                        makeMDButton.setEnabled(true);
                     }
                 }
-            },
-            null);
+            });
 
         makeMDButton.addActionListener(new ActionListener() {
-            @Override public void actionPerformed(final ActionEvent e) {
+            @Override
+            public void actionPerformed(final ActionEvent e) {
                 final Thread thread = new Thread(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         getProgressBar().start(10000);
-                        if (metadataCB.getStringValue().equals(
+                        if (metadataWi.getStringValue().equals(
                                               createNewMetadataDestroyData)) {
                             createMetadata(true);
                         } else {

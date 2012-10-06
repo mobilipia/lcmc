@@ -18,13 +18,13 @@ import java.awt.Dimension;
 import javax.swing.JPanel;
 import javax.swing.JCheckBox;
 import java.net.InetAddress;
-import lcmc.utilities.TestSuite1;
 import lcmc.Exceptions;
 import lcmc.data.Host;
 
 public final class ToolsTest1 extends TestCase {
     @Before
     protected void setUp() {
+        TestSuite1.initTestCluster();
         TestSuite1.initTest();
     }
 
@@ -86,9 +86,9 @@ public final class ToolsTest1 extends TestCase {
         Tools.debug(new Object(), "test d1", 1);
         Tools.debug(new Object(), "test d0", 0);
         final Pattern p = Pattern.compile("^" + TestSuite1.DEBUG_STRING
-                 + "\\(1\\) \\[\\d+s\\] test d1 \\(java\\.lang\\.Object\\)\\s+"
-                 + TestSuite1.DEBUG_STRING + ".*"
-                 + "\\(0\\) \\[\\d+s\\] test d0 \\(java\\.lang\\.Object\\)\\s+");
+                + "\\(1\\) \\[\\d+s\\] test d1 \\(java\\.lang\\.Object\\)\\s+"
+                + TestSuite1.DEBUG_STRING + ".*"
+                + "\\(0\\) \\[\\d+s\\] test d0 \\(java\\.lang\\.Object\\)\\s+");
         final Matcher m = p.matcher(TestSuite1.getStdout());
         assertTrue(m.matches());
         TestSuite1.clearStdout();
@@ -346,7 +346,8 @@ public final class ToolsTest1 extends TestCase {
         TestSuite1.clearStdout();
         final lcmc.utilities.ConvertCmdCallback ccc =
                                     new lcmc.utilities.ConvertCmdCallback() {
-            @Override public String convert(final String command) {
+            @Override
+            public String convert(final String command) {
                 return command.replaceAll(lcmc.configs.DistResource.SUDO,
                                           "sudo ");
             }
@@ -723,6 +724,7 @@ public final class ToolsTest1 extends TestCase {
                 Tools.progressIndicatorFailed(host.getName(), "fail");
             }
         }
+        TestSuite1.clearStdout();
     }
 
     @Test
@@ -1035,6 +1037,41 @@ public final class ToolsTest1 extends TestCase {
         }
         try {
             assertEquals(1, Tools.compareVersions("8.4rc3", "8.3"));
+        } catch (Exceptions.IllegalVersionException e) {
+            assertFalse(true);
+        }
+        try {
+            assertEquals(0, Tools.compareVersions("1.1.7-2.fc16", "1.1.7"));
+        } catch (Exceptions.IllegalVersionException e) {
+            assertFalse(true);
+        }
+        try {
+            assertEquals(-1, Tools.compareVersions("1.1.7-2.fc16", "1.1.8"));
+        } catch (Exceptions.IllegalVersionException e) {
+            assertFalse(true);
+        }
+        try {
+            assertEquals(1, Tools.compareVersions("1.1.7-2.fc16", "1.1.6"));
+        } catch (Exceptions.IllegalVersionException e) {
+            assertFalse(true);
+        }
+        try {
+            assertEquals(0, Tools.compareVersions("1.7.0_03", "1.7"));
+        } catch (Exceptions.IllegalVersionException e) {
+            assertFalse(true);
+        }
+        try {
+            assertEquals(-1, Tools.compareVersions("1.6.0_26", "1.7"));
+        } catch (Exceptions.IllegalVersionException e) {
+            assertFalse(true);
+        }
+        try {
+            assertEquals(1, Tools.compareVersions("1.7", "1.6.0_26"));
+        } catch (Exceptions.IllegalVersionException e) {
+            assertFalse(true);
+        }
+        try {
+            assertEquals(0, Tools.compareVersions("1.6.0_26", "1.6.0"));
         } catch (Exceptions.IllegalVersionException e) {
             assertFalse(true);
         }
@@ -1380,5 +1417,23 @@ public final class ToolsTest1 extends TestCase {
         for (final Host h : TestSuite1.getHosts()) {
             Tools.versionBeforePacemaker(h);
         }
+    }
+
+    private String ssb(final String s) {
+        final StringBuffer sb = new StringBuffer(s);
+        Tools.chomp(sb);
+        return sb.toString();
+    }
+
+    @Test
+    public void testComp() {
+        assertEquals("",      ssb(""));
+        assertEquals("\n",      ssb("\n\n\n"));
+        assertEquals(" ",      ssb(" "));
+        assertEquals("a",     ssb("a"));
+        assertEquals("a\nb",  ssb("a\nb"));
+        assertEquals(" a\n",    ssb(" a\n"));
+        assertEquals(" a\n",    ssb(" a\n\n"));
+        assertEquals(" a \n",    ssb(" a \n"));
     }
 }

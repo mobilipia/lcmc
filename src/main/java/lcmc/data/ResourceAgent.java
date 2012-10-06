@@ -22,7 +22,7 @@
 package lcmc.data;
 
 import lcmc.utilities.Tools;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.gui.ClusterBrowser;
 import lcmc.gui.resources.ServiceInfo;
 import java.util.List;
@@ -105,10 +105,15 @@ public final class ResourceAgent {
     private final Map<String, String> sectionMap =
                                                 new HashMap<String, String>();
     /** Map to field types for some parameters. */
-    private final Map<String, GuiComboBox.Type> fieldType =
-                                       new HashMap<String, GuiComboBox.Type>();
+    private final Map<String, Widget.Type> fieldType =
+                                       new HashMap<String, Widget.Type>();
     /** Whether this resource agent is ping or pingd. */
     private final boolean pingService;
+    /** Whether to ignore defaults, show them, but don't assume they are
+     * defaults. */
+    private boolean ignoreDefaults = false;
+    /** Whether meta-data has been loaded. */
+    private boolean metaDataLoaded = false;
     /** Name of lsb style resource (/etc/init.d/*). */
     public static final String LSB_CLASS = "lsb";
     /** Name of heartbeat style resource (heartbeat 1). */
@@ -175,7 +180,7 @@ public final class ResourceAgent {
         paramRequired.add(name);
         paramShortDesc.put(name, shortName);
         paramLongDesc.put(name, longName);
-        fieldType.put(name, GuiComboBox.Type.LABELFIELD);
+        fieldType.put(name, Widget.Type.LABELFIELD);
     }
 
     /** Returns the hb service name. */
@@ -202,7 +207,8 @@ public final class ResourceAgent {
     }
 
     /** Returns the hash code. */
-    @Override public int hashCode() {
+    @Override
+    public int hashCode() {
         return hash;
     }
 
@@ -210,7 +216,8 @@ public final class ResourceAgent {
      * Returns whethet two service equal. They have the same name and are from
      * the same hb class.
      */
-    @Override public boolean equals(final Object oth) {
+    @Override
+    public boolean equals(final Object oth) {
         if (this == oth) {
             return true;
         }
@@ -533,18 +540,48 @@ public final class ResourceAgent {
         return sectionMap.get(param);
     }
 
+    /** Set section of some of the parameters. */
+    void setSection(final String param, final String section) {
+        sectionMap.put(param, section);
+    }
+
     /** Returns field type of the param. */
-    public GuiComboBox.Type getFieldType(final String param) {
+    public Widget.Type getFieldType(final String param) {
         return fieldType.get(param);
     }
 
     /** Returns resource agent string like ocf:linbit:drbd. */
-    String getRAString() {
-        return resourceClass + "::" + provider + ":" + name;
+    public String getRAString() {
+        return resourceClass + ":" + provider + ":" + name;
     }
 
     /** Returns whether this resource agent is ping or pingd. */
     public boolean isPingService() {
         return pingService;
+    }
+
+    /** Set whether the default should be used. */
+    public void setIgnoreDefaults(final boolean ignoreDefaults) {
+        this.ignoreDefaults = ignoreDefaults;
+    }
+
+    /** Whether the default should be used. */
+    public boolean isIgnoreDefaults() {
+        return ignoreDefaults;
+    }
+
+    /** Whether the meta data are loaded. */
+    public final boolean isMetaDataLoaded() {
+        return metaDataLoaded;
+    }
+
+    /** Set whether the meta data are loaded. */
+    public final void setMetaDataLoaded(final boolean metaDataLoaded) {
+        this.metaDataLoaded = metaDataLoaded;
+    }
+
+    /** Whether the parameter exists. */
+    public boolean hasParameter(final String param) {
+        return parameters.contains(param);
     }
 }

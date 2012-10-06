@@ -23,6 +23,7 @@
 package lcmc.gui;
 
 import lcmc.utilities.Tools;
+import lcmc.utilities.DRBD;
 import lcmc.data.Host;
 import lcmc.data.Subtext;
 import lcmc.data.resources.BlockDevice;
@@ -31,6 +32,7 @@ import lcmc.gui.resources.DrbdInfo;
 import lcmc.gui.resources.DrbdVolumeInfo;
 import lcmc.gui.resources.BlockDevInfo;
 import lcmc.gui.resources.Info;
+import lcmc.gui.resources.DrbdMultiSelectionInfo;
 
 import java.awt.Shape;
 import java.awt.Graphics2D;
@@ -41,6 +43,7 @@ import java.awt.BasicStroke;
 
 import edu.uci.ics.jung.graph.DirectedSparseGraph;
 import edu.uci.ics.jung.visualization.util.VertexShapeFactory;
+import edu.uci.ics.jung.visualization.picking.PickedState;
 
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -51,6 +54,7 @@ import java.util.ArrayList;
 import javax.swing.JPopupMenu;
 import javax.swing.ImageIcon;
 import javax.swing.SwingUtilities;
+import org.apache.commons.collections15.map.MultiKeyMap;
 
 /**
  * This class creates graph and provides methods to add new block device
@@ -85,6 +89,8 @@ public final class DrbdGraph extends ResourceGraph {
 
     /** Drbd info object to which this graph belongs. */
     private DrbdInfo drbdInfo;
+    /** Interval beetween two animation frames. */
+    private Info multiSelectionInfo = null;
 
     /** Horizontal step in pixels by which the block devices are drawn in
      * the graph. */
@@ -123,7 +129,8 @@ public final class DrbdGraph extends ResourceGraph {
     }
 
     /** Inits the graph. */
-    @Override protected void initGraph() {
+    @Override
+    protected void initGraph() {
         super.initGraph(new DirectedSparseGraph<Vertex, Edge>());
     }
 
@@ -203,7 +210,8 @@ public final class DrbdGraph extends ResourceGraph {
                                                                           dvi);
                     }
                     SwingUtilities.invokeLater(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             lockGraph();
                             getGraph().removeVertex(bdv);
                             unlockGraph();
@@ -240,14 +248,20 @@ public final class DrbdGraph extends ResourceGraph {
                 bdv = blockDeviceToVertexMap.get(bdi.getBlockDevice());
             }
             if (prevBdi != null
+                && bdi.getBlockDevice().isVolumeGroupOnPhysicalVolume()
+                && bdi.getBlockDevice().getVolumeGroupOnPhysicalVolume().equals(
+                                       prevBdi.getBlockDevice()
+                                          .getVolumeGroupOnPhysicalVolume())) {
+                devYPos -= 8;
+            } else if (prevBdi != null
                 && (!bdi.getBlockDevice().isDrbd()
                     || !prevBdi.getBlockDevice().isDrbd())) {
                 devYPos -= 4;
             } else if (prevBdi != null
-                && bdi.getBlockDevice().isDrbd()
-                && prevBdi.getBlockDevice().isDrbd()
-                && bdi.getDrbdVolumeInfo().getDrbdResourceInfo()
-                   == prevBdi.getDrbdVolumeInfo().getDrbdResourceInfo()) {
+                      && bdi.getBlockDevice().isDrbd()
+                      && prevBdi.getBlockDevice().isDrbd()
+                      && bdi.getDrbdVolumeInfo().getDrbdResourceInfo()
+                         == prevBdi.getDrbdVolumeInfo().getDrbdResourceInfo()) {
                 devYPos -= 6;
             }
             Point2D pos = null; // getSavedPosition(bdi);
@@ -268,7 +282,8 @@ public final class DrbdGraph extends ResourceGraph {
     }
 
     /** Scale and add hosts if they appeared. */
-    @Override public void scale() {
+    @Override
+    public void scale() {
         for (final HostDrbdInfo hostDrbdInfo : hostBDVerticesMap.keySet()) {
             addHost(hostDrbdInfo);
         }
@@ -285,7 +300,8 @@ public final class DrbdGraph extends ResourceGraph {
         edgeToDrbdVolumeMap.remove(e);
         drbdVolumeToEdgeMap.remove(dvi);
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 try {
                     lockGraph();
                     getGraph().removeEdge(e);
@@ -302,9 +318,9 @@ public final class DrbdGraph extends ResourceGraph {
      * Returns an icon for vertex, depending on if it is host or block device,
      * if it is started or stopped and so on.
      */
-    @Override protected List<ImageIcon> getIconsForVertex(
-                                                      final Vertex v,
-                                                      final boolean testOnly) {
+    @Override
+    protected List<ImageIcon> getIconsForVertex(final Vertex v,
+                                                final boolean testOnly) {
         final List<ImageIcon> icons = new ArrayList<ImageIcon>();
         if (isVertexBlockDevice(v)) {
             final BlockDevInfo bdi = (BlockDevInfo) getInfo(v);
@@ -341,7 +357,8 @@ public final class DrbdGraph extends ResourceGraph {
      * Returns label for drbd volume edge. If it is longer than 10
      * characters, it is shortened.
      */
-    @Override protected String getLabelForEdgeStringer(final Edge edge) {
+    @Override
+    protected String getLabelForEdgeStringer(final Edge edge) {
         final DrbdVolumeInfo dvi = edgeToDrbdVolumeMap.get(edge);
         if (dvi != null
             && dvi.getName() != null
@@ -364,7 +381,8 @@ public final class DrbdGraph extends ResourceGraph {
                     && !destBDI.isWFConnection(tOnly)) {
                     edge.setDirection(dest, source);
                     SwingUtilities.invokeLater(new Runnable() {
-                        @Override public void run() {
+                        @Override
+                        public void run() {
                             repaint();
                         }
                     });
@@ -373,7 +391,8 @@ public final class DrbdGraph extends ResourceGraph {
             } else if (!sourceBD.isPrimary() && destBD.isPrimary()) {
                 edge.setDirection(dest, source);
                 SwingUtilities.invokeLater(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         repaint();
                     }
                 });
@@ -422,8 +441,8 @@ public final class DrbdGraph extends ResourceGraph {
     }
 
     /** Small text that appears above the icon. */
-    @Override protected String getIconText(final Vertex v,
-                                           final boolean testOnly) {
+    @Override
+    protected String getIconText(final Vertex v, final boolean testOnly) {
         if (isVertexBlockDevice(v)) {
             final BlockDevInfo bdi = (BlockDevInfo) getInfo(v);
             if (bdi != null) {
@@ -439,8 +458,9 @@ public final class DrbdGraph extends ResourceGraph {
     }
 
     /** Small text that appears in the right corner. */
-    @Override protected Subtext getRightCornerText(final Vertex v,
-                                                   final boolean testOnly) {
+    @Override
+    protected Subtext getRightCornerText(final Vertex v,
+                                         final boolean testOnly) {
         if (isVertexBlockDevice(v)) {
             final BlockDevInfo bdi = (BlockDevInfo) getInfo(v);
             if (bdi != null) {
@@ -457,8 +477,8 @@ public final class DrbdGraph extends ResourceGraph {
     }
 
     /** Small text that appears down. */
-    @Override protected Subtext[] getSubtexts(final Vertex v,
-                                              final boolean testOnly) {
+    @Override
+    protected Subtext[] getSubtexts(final Vertex v, final boolean testOnly) {
         if (isVertexBlockDevice(v)) {
             final BlockDevInfo bdi = (BlockDevInfo) getInfo(v);
             if (bdi != null && bdi.getBlockDevice().isDrbd()
@@ -492,8 +512,8 @@ public final class DrbdGraph extends ResourceGraph {
      * Returns label for block device vertex. If it is longer than 23
      * characters, it is shortened.
      */
-    @Override protected String getMainText(final Vertex v,
-                                           final boolean testOnly) {
+    @Override
+    protected String getMainText(final Vertex v, final boolean testOnly) {
         if (isVertexBlockDevice(v)) {
             String l;
             if (isVertexDrbd(v)) {
@@ -523,14 +543,23 @@ public final class DrbdGraph extends ResourceGraph {
     }
 
     /** Returns shape of the block device vertex. */
-    @Override protected Shape getVertexShape(
-                                    final Vertex v,
-                                    final VertexShapeFactory<Vertex> factory) {
+    @Override
+    protected Shape getVertexShape(final Vertex v,
+                                   final VertexShapeFactory<Vertex> factory) {
         return factory.getRectangle(v);
     }
 
     /** Handles popup in when block device vertex is clicked. */
-    protected JPopupMenu handlePopupVertex(final Vertex v, final Point2D p) {
+    @Override
+    protected JPopupMenu handlePopupVertex(final Vertex v,
+                                           final List<Vertex> pickedV,
+                                           final Point2D p) {
+        if (pickedV.size() > 1) {
+            final Info msi = multiSelectionInfo;
+            if (msi != null) {
+                return msi.getPopup();
+            }
+        }
         if (isVertexBlockDevice(v)) {
             final BlockDevInfo bdi = (BlockDevInfo) getInfo(v);
             if (bdi == null) {
@@ -586,7 +615,8 @@ public final class DrbdGraph extends ResourceGraph {
     }
 
     /** Picks vertex, that is associated with the specified info object. */
-    @Override public void pickInfo(final Info i) {
+    @Override
+    public void pickInfo(final Info i) {
         final Edge e = drbdVolumeToEdgeMap.get(i);
         if (e == null) {
             super.pickInfo(i);
@@ -596,7 +626,8 @@ public final class DrbdGraph extends ResourceGraph {
     }
 
     /** Is called after right click on the resource edge. */
-    @Override protected JPopupMenu handlePopupEdge(final Edge edge) {
+    @Override
+    protected JPopupMenu handlePopupEdge(final Edge edge) {
         final DrbdVolumeInfo dvi = edgeToDrbdVolumeMap.get(edge);
         return dvi.getPopup();
     }
@@ -606,7 +637,8 @@ public final class DrbdGraph extends ResourceGraph {
      * Is called after right click on the background and it returns
      * background popup menu.
      */
-    @Override protected JPopupMenu handlePopupBackground(final Point2D pos) {
+    @Override
+    protected JPopupMenu handlePopupBackground(final Point2D pos) {
         super.handlePopupBackground(pos);
         return null;
     }
@@ -669,7 +701,8 @@ public final class DrbdGraph extends ResourceGraph {
     }
 
     /** Is called when one block device vertex was pressed. */
-    @Override protected void oneVertexPressed(final Vertex v) {
+    @Override
+    protected void oneVertexPressed(final Vertex v) {
         if (isVertexBlockDevice(v)) {
             pickHost(v);
             final BlockDevInfo bdi = (BlockDevInfo) getInfo(v);
@@ -690,7 +723,8 @@ public final class DrbdGraph extends ResourceGraph {
     }
 
     /** Is called when block device vertex is released. */
-    @Override protected void vertexReleased(final Vertex v, final Point2D pos) {
+    @Override
+    protected void vertexReleased(final Vertex v, final Point2D pos) {
         double x = pos.getX();
         double y = pos.getY();
         final double minPos = (getVertexWidth(v)
@@ -760,7 +794,8 @@ public final class DrbdGraph extends ResourceGraph {
      * Is called when resource edge is pressed. It selects the asspociated
      * resource.
      */
-    @Override protected void oneEdgePressed(final Edge e) {
+    @Override
+    protected void oneEdgePressed(final Edge e) {
         final DrbdVolumeInfo dvi = edgeToDrbdVolumeMap.get(e);
         if (dvi != null) {
             dvi.selectMyself();
@@ -771,7 +806,8 @@ public final class DrbdGraph extends ResourceGraph {
      * Is called, when background of the graph is clicked. It deselects
      * selected node.
      */
-    @Override protected void backgroundClicked() {
+    @Override
+    protected void backgroundClicked() {
         drbdInfo.setSelectedNode(null);
         drbdInfo.selectMyself();
     }
@@ -780,7 +816,8 @@ public final class DrbdGraph extends ResourceGraph {
      * Returns fill color as paint object for for specified block device
      * vertex.
      */
-    @Override protected Color getVertexFillColor(final Vertex v) {
+    @Override
+    protected Color getVertexFillColor(final Vertex v) {
         final HostDrbdInfo hi = vertexToHostMap.get(v);
         final Vertex hostVertex = getVertex(hi);
         if (v.equals(hostVertex)) {
@@ -813,7 +850,8 @@ public final class DrbdGraph extends ResourceGraph {
      * Returns secondary gradient fill paint color for vertex v. If it is
      * a volume and there is previous volume don't show gradient.
      */
-    @Override protected Color getVertexFillSecondaryColor(final Vertex v) {
+    @Override
+    protected Color getVertexFillSecondaryColor(final Vertex v) {
         if (!isVertexBlockDevice(v)) {
             return Color.WHITE;
         }
@@ -871,7 +909,8 @@ public final class DrbdGraph extends ResourceGraph {
     }
 
     /** Returns tool tip when mouse is over a block device vertex. */
-    @Override String getVertexToolTip(final Vertex v) {
+    @Override
+    String getVertexToolTip(final Vertex v) {
         final Info i = getInfo(v);
         if (i == null) {
             return null;
@@ -880,7 +919,8 @@ public final class DrbdGraph extends ResourceGraph {
     }
 
     /** Returns tool tip when mouse is over a resource edge. */
-    @Override String getEdgeToolTip(final Edge edge) {
+    @Override
+    String getEdgeToolTip(final Edge edge) {
         final DrbdVolumeInfo dvi = edgeToDrbdVolumeMap.get(edge);
         return dvi.getToolTipForGraph(isTestOnly());
     }
@@ -890,7 +930,8 @@ public final class DrbdGraph extends ResourceGraph {
      * primary to secondory, or from connected node to the disconnected or
      * none at all.
      */
-    @Override protected boolean showEdgeArrow(final Edge edge) {
+    @Override
+    protected boolean showEdgeArrow(final Edge edge) {
         final BlockDevInfo sourceBDI = (BlockDevInfo) getInfo(edge.getSource());
         final BlockDevInfo destBDI = (BlockDevInfo) getInfo(edge.getDest());
         if (sourceBDI == null || destBDI == null) {
@@ -914,7 +955,8 @@ public final class DrbdGraph extends ResourceGraph {
      * Returns the color of the edge, depending on if the drbds are connected
      * and so on.
      */
-    @Override protected Paint getEdgeDrawPaint(final Edge edge) {
+    @Override
+    protected Paint getEdgeDrawPaint(final Edge edge) {
         final DrbdVolumeInfo dvi = edgeToDrbdVolumeMap.get(edge);
         if (dvi != null
             && dvi.isConnected(isTestOnly())
@@ -931,7 +973,8 @@ public final class DrbdGraph extends ResourceGraph {
      * Returns paint for picked edge. It returns different colors if drbd is
      * disconnected.
      */
-    @Override protected Paint getEdgePickedPaint(final Edge edge) {
+    @Override
+    protected Paint getEdgePickedPaint(final Edge edge) {
         final DrbdVolumeInfo dvi = edgeToDrbdVolumeMap.get(edge);
         if (dvi != null
             && dvi.isConnected(isTestOnly())
@@ -944,7 +987,8 @@ public final class DrbdGraph extends ResourceGraph {
     }
 
     /** Returns id that is used for saving of the vertex positions to a file. */
-    @Override protected String getId(final Info i) {
+    @Override
+    protected String getId(final Info i) {
         final Vertex v = getVertex(i);
         String hiId = "";
         if (v != null) {
@@ -957,7 +1001,8 @@ public final class DrbdGraph extends ResourceGraph {
     }
 
     /** Returns the default vertex width. */
-    @Override protected int getDefaultVertexWidth(final Vertex v) {
+    @Override
+    protected int getDefaultVertexWidth(final Vertex v) {
         if (isVertexBlockDevice(v)) {
             return VERTEX_SIZE_BD;
         } else {
@@ -966,7 +1011,8 @@ public final class DrbdGraph extends ResourceGraph {
     }
 
     /** Returns height of the vertex. */
-    @Override protected int getDefaultVertexHeight(final Vertex v) {
+    @Override
+    protected int getDefaultVertexHeight(final Vertex v) {
         if (isVertexBlockDevice(v)) {
             return VERTEX_HEIGHT;
         } else {
@@ -996,11 +1042,12 @@ public final class DrbdGraph extends ResourceGraph {
     }
 
     /** This method draws how much of the vertex is used for something. */
-    @Override protected void drawInside(final Vertex v,
-                                        final Graphics2D g2d,
-                                        final double x,
-                                        final double y,
-                                        final Shape shape) {
+    @Override
+    protected void drawInside(final Vertex v,
+                              final Graphics2D g2d,
+                              final double x,
+                              final double y,
+                              final Shape shape) {
         final double used = getUsed(v);
         final float height = (float) shape.getBounds().getHeight();
         final float width = (float) shape.getBounds().getWidth();
@@ -1077,11 +1124,31 @@ public final class DrbdGraph extends ResourceGraph {
     }
 
     /** Returns whether to show a hollow arrow. */
-    @Override protected boolean showHollowArrow(final Edge e) {
+    @Override
+    protected boolean showHollowArrow(final Edge e) {
         final DrbdVolumeInfo dvi = edgeToDrbdVolumeMap.get(e);
         if (dvi == null) {
             return false;
         }
         return !dvi.isConnected(isTestOnly());
+    }
+
+    /** Select multiple elements. */
+    @Override
+    protected void multiSelection() {
+        final List<Info> selectedInfos = new ArrayList<Info>();
+        final PickedState<Vertex> ps =
+                getVisualizationViewer().getRenderContext()
+                                                    .getPickedVertexState();
+        for (final Vertex v : ps.getPicked()) {
+            selectedInfos.add(getInfo(v));
+        }
+        multiSelectionInfo = new DrbdMultiSelectionInfo(selectedInfos,
+                                                        getClusterBrowser());
+        getClusterBrowser().setRightComponentInView(multiSelectionInfo);
+    }
+
+    public Map<DrbdVolumeInfo, Edge> getDrbdVolumeToEdgeMap() {
+        return drbdVolumeToEdgeMap;
     }
 }

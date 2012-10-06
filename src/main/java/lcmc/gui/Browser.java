@@ -138,7 +138,8 @@ public class Browser {
         }
         final DefaultMutableTreeNode oldNode = oldN;
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 if (node != null) {
                     treeModel.reload(node);
                 }
@@ -146,7 +147,8 @@ public class Browser {
         });
         if (!select && t != null && oldNode != null) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     /* if don't want to select, we reselect the old path. */
                     //t.setSelectionPath(path);
                     treeModel.reload(oldNode);
@@ -158,7 +160,8 @@ public class Browser {
     /** Sets the node change for the node. */
     public final void nodeChanged(final DefaultMutableTreeNode node) {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 treeModel.nodeChanged(node);
             }
         });
@@ -192,7 +195,8 @@ public class Browser {
      * graphical view, it returns a split pane with this view and the info
      * underneath.
      */
-    final JComponent getInfoPanel(final Object nodeInfo) {
+    final JComponent getInfoPanel(final Object nodeInfo,
+                                  final boolean disabledDuringLoad) {
         if (nodeInfo == null) {
             return null;
         }
@@ -209,10 +213,12 @@ public class Browser {
             iPanel.setMaximumSize(new Dimension(maxWidth,
                                                 (int) Short.MAX_VALUE));
             if (infoPanelSplitPane != null) {
-                final int loc = infoPanelSplitPane.getDividerLocation();
-                infoPanelSplitPane.setLeftComponent(gView);
-                infoPanelSplitPane.setRightComponent(iPanel);
-                infoPanelSplitPane.setDividerLocation(loc);
+                if (!disabledDuringLoad) {
+                    final int loc = infoPanelSplitPane.getDividerLocation();
+                    infoPanelSplitPane.setLeftComponent(gView);
+                    infoPanelSplitPane.setRightComponent(iPanel);
+                    infoPanelSplitPane.setDividerLocation(loc);
+                }
                 return infoPanelSplitPane;
             }
             final JSplitPane newSplitPane =
@@ -302,7 +308,8 @@ public class Browser {
     /** Selects specified path. */
     protected void selectPath(final Object[] path) {
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 final TreePath tp = new TreePath(path);
                 getTree().expandPath(tp);
                 getTree().setSelectionPath(tp);

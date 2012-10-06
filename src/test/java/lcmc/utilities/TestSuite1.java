@@ -37,7 +37,6 @@ import java.util.ArrayList;
 import junit.framework.TestSuite;
 import junit.framework.TestCase;
 
-import lcmc.utilities.Tools;
 import lcmc.gui.TerminalPanel;
 import lcmc.data.Host;
 import lcmc.data.Cluster;
@@ -85,6 +84,10 @@ public final class TestSuite1 {
         }
     }
     public static final List<Host> HOSTS = new ArrayList<Host>();
+    public static final String TEST_HOSTNAME =
+                                            System.getenv("LCMC_TEST_HOSTNAME");
+    public static final String TEST_USERNAME =
+                                            System.getenv("LCMC_TEST_USERNAME");
 
     /** Private constructor. */
     private TestSuite1() {
@@ -108,17 +111,20 @@ public final class TestSuite1 {
     private static StringBuilder stdout = new StringBuilder();
 
     private static OutputStream out = new OutputStream() {
-         @Override public void write(final int b) throws IOException {
+         @Override
+         public void write(final int b) throws IOException {
              stdout.append(String.valueOf((char) b));
          }
 
-         @Override public void write(final byte[] b,
-                                     final int off,
-                                     final int len) throws IOException {
+         @Override
+         public void write(final byte[] b,
+                           final int off,
+                           final int len) throws IOException {
              stdout.append(new String(b, off, len));
          }
 
-         @Override public void write(final byte[] b) throws IOException {
+         @Override
+         public void write(final byte[] b) throws IOException {
              write(b, 0, b.length);
          }
     };
@@ -126,6 +132,7 @@ public final class TestSuite1 {
 
     /** Clears stdout. Call it, if something writes to stdout. */
     public static void clearStdout() {
+        realPrint(stdout.toString());
         stdout.delete(0, stdout.length());
     }
 
@@ -138,34 +145,56 @@ public final class TestSuite1 {
         realOut.println(s);
     }
 
+    public static void realPrint(final String s) {
+        realOut.print(s);
+    }
+
     /** Print error and exit. */
     public static void error(final String s) {
+        System.out.println(s);
         System.exit(10);
     }
 
     public static void initTest() {
+        initTestCluster();
         System.setOut(new PrintStream(out, true));
         System.setErr(new PrintStream(out, true));
         Tools.waitForSwing();
         clearStdout();
     }
     /** Adds test cluster to the GUI. */
-    private static void initTestCluster() {
+    public static void initTestCluster() {
         if (Tools.getGUIData() == null) {
             if (CONNECT_LINBIT) {
                 lcmc.LCMC.main(new String[]{});
             } else {
                 lcmc.LCMC.main(new String[]{"--no-upgrade-check"});
             }
+        } else {
+            return;
         }
+
         Tools.setDebugLevel(-1);
         if (CLUSTER) {
-            final String username = "root";
-            final boolean useSudo = false;
+            String username;
+            boolean useSudo;
+            if (TEST_USERNAME == null) {
+                username = "root";
+                useSudo = false;
+            } else {
+                username = TEST_USERNAME;
+                useSudo = true;
+            }
             final Cluster cluster = new Cluster();
             cluster.setName("test");
             for (int i = 1; i <= NUMBER_OF_HOSTS; i++) {
-                final Host host = initHost("test" + i, username, useSudo);
+                String hostName;
+                if (TEST_HOSTNAME == null) {
+                    hostName = "test" + i;
+                } else {
+                    hostName = TEST_HOSTNAME + "-" + (char) ('a' - 1 + i);
+                }
+                final Host host = initHost(hostName, username, useSudo);
                 HOSTS.add(host);
                 host.setCluster(cluster);
                 cluster.addHost(host);
@@ -277,11 +306,11 @@ public final class TestSuite1 {
 
     @SuppressWarnings("unchecked")
     public static void main(final String[] args) {
-        initTestCluster();
-
         final TestSuite suite = new TestSuite();
-        final int startPos = "build/classes".length() + 1;
-        for (final String c : getTest1Classes("build/classes")) {
+        for (final String classes : new String[]{"build/classes",
+                                                 "target/test-classes"}) {
+        final int startPos = classes.length() + 1;
+        for (final String c : getTest1Classes(classes)) {
             final String className =
               c.substring(startPos, c.length() - 6).replaceAll("[/\\\\]", ".");
             try {
@@ -291,8 +320,9 @@ public final class TestSuite1 {
                 error("unusable class: " + className);
             }
         }
-        //final TestResult testResult = new TestResult();
+        }
         junit.textui.TestRunner.run(suite);
+        System.exit(0);
     }
 
     /** Specify a condition to be passed to the waitForCondition function. */

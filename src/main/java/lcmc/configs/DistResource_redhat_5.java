@@ -28,7 +28,8 @@ import java.util.Arrays;
 public final class DistResource_redhat_5 extends java.util.ListResourceBundle {
 
     /** Get contents. */
-    @Override protected Object[][] getContents() {
+    @Override
+    protected Object[][] getContents() {
         return Arrays.copyOf(contents, contents.length);
     }
 
@@ -51,7 +52,7 @@ public final class DistResource_redhat_5 extends java.util.ListResourceBundle {
         {"PmInst.install.1",
          "wget -N -nd -P /etc/yum.repos.d/"
          + " http://www.clusterlabs.org/rpm/epel-5/clusterlabs.repo && "
-         + " rpm -Uvh http://download.fedora.redhat.com/pub/epel/5/i386"
+         + " rpm -Uvh http://dl.fedoraproject.org/pub/epel/5/i386"
          + "/epel-release-5-4.noarch.rpm ; "
          + "(yum -y -x resource-agents-3.* -x openais-1* -x openais-0.9*"
          + " -x heartbeat-2.1* install pacemaker.@ARCH@ corosync.@ARCH@"
@@ -68,7 +69,7 @@ public final class DistResource_redhat_5 extends java.util.ListResourceBundle {
         {"PmInst.install.2",
          "wget -N -nd -P /etc/yum.repos.d/"
          + " http://www.clusterlabs.org/rpm-next/epel-5/clusterlabs.repo && "
-         + " rpm -Uvh http://download.fedora.redhat.com/pub/epel/5/i386"
+         + " rpm -Uvh http://dl.fedoraproject.org/pub/epel/5/i386"
          + "/epel-release-5-4.noarch.rpm ; "
          + "(yum -y -x resource-agents-3.* -x openais-1* -x openais-0.9*"
          + " -x heartbeat-2.1* install pacemaker.@ARCH@ corosync.@ARCH@"
@@ -84,7 +85,7 @@ public final class DistResource_redhat_5 extends java.util.ListResourceBundle {
         {"HbPmInst.install.1",
          "wget -N -nd -P /etc/yum.repos.d/"
          + " http://www.clusterlabs.org/rpm/epel-5/clusterlabs.repo && "
-         + " rpm -Uvh http://download.fedora.redhat.com/pub/epel/5/i386"
+         + " rpm -Uvh http://dl.fedoraproject.org/pub/epel/5/i386"
          + "/epel-release-5-4.noarch.rpm ; "
          + "yum -y -x resource-agents-3.* -x openais-1* -x openais-0.9*"
          + " -x heartbeat-2.1* install pacemaker.@ARCH@ heartbeat.@ARCH@"},
@@ -110,7 +111,7 @@ public final class DistResource_redhat_5 extends java.util.ListResourceBundle {
         {"HbPmInst.install.3",
          "wget -N -nd -P /etc/yum.repos.d/"
          + " http://www.clusterlabs.org/rpm-next/epel-5/clusterlabs.repo && "
-         + " rpm -Uvh http://download.fedora.redhat.com/pub/epel/5/i386"
+         + " rpm -Uvh http://dl.fedoraproject.org/pub/epel/5/i386"
          + "/epel-release-5-4.noarch.rpm ; "
          + "yum -y -x resource-agents-3.* -x openais-1* -x openais-0.9*"
          + " -x heartbeat-2.1* install pacemaker.@ARCH@ heartbeat.@ARCH@"},

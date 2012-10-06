@@ -30,7 +30,8 @@ public final class DistResource_redhatenterpriseas
                                     extends java.util.ListResourceBundle {
 
     /** Get contents. */
-    @Override protected Object[][] getContents() {
+    @Override
+    protected Object[][] getContents() {
         return Arrays.copyOf(contents, contents.length);
     }
 
@@ -107,5 +108,7 @@ public final class DistResource_redhatenterpriseas
 
         {"Openais.deleteFromRc",
          DistResource.SUDO + "/sbin/chkconfig --del openais"},
+        {"libvirt.lxc.libpath", "/usr/libexec"},
+        {"libvirt.xen.libpath", "/usr/lib/xen"},
     };
 }

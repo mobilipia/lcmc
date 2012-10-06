@@ -29,7 +29,8 @@ import java.util.Arrays;
 public final class DistResource_fedora extends java.util.ListResourceBundle {
 
     /** Get contents. */
-    @Override protected Object[][] getContents() {
+    @Override
+    protected Object[][] getContents() {
         return Arrays.copyOf(contents, contents.length);
     }
 
@@ -43,6 +44,7 @@ public final class DistResource_fedora extends java.util.ListResourceBundle {
         {"version:Fedora release 13*", "13"},
         {"version:Fedora release 14*", "14"},
         {"version:Fedora release 15*", "15"},
+        {"version:Fedora release 16*", "16"},
 
         /* directory capturing regexp on the website from the kernel version */
         {"kerneldir", "(\\d+\\.\\d+\\.\\d+-\\d+.*?fc\\d+).*"},
@@ -84,7 +86,7 @@ public final class DistResource_fedora extends java.util.ListResourceBundle {
 
         /* Corosync/Pacemaker native */
         {"PmInst.install.text.1",
-         "yum install: 1.1.x/1.3.x"},
+         "yum install: 1.1.x/1.4.x"},
         {"PmInst.install.1",
          "yum -y install pacemaker corosync"
          + "&& if ( rpm -qa|grep drbd ); then"
@@ -105,7 +107,7 @@ public final class DistResource_fedora extends java.util.ListResourceBundle {
          + "/usr/bin/yum -y install autoconf automake libtool glib2-devel"
          + " libxml2-devel bzip2-devel libtool-ltdl-devel e2fsprogs-devel"
          + " net-snmp-devel subversion libxslt-devel libuuid-devel wget git"
-         + " mercurial nss-devel"
+         + " mercurial nss-devel libaio-devel libqb-devel"
          + " && /bin/mkdir -p /tmp/pminst "
          /* cluster glue */
          + " && cd /tmp/pminst/"
@@ -126,11 +128,31 @@ public final class DistResource_fedora extends java.util.ListResourceBundle {
          + " && ./autogen.sh && ./configure"
          + " --sysconfdir=/etc --localstatedir=/var"
          + " && make && make install"
-         /* corosync */
+         ///* corosync 2.0 */
+         //+ " && cd /tmp/pminst"
+         //+ " && git clone https://github.com/corosync/corosync.git"
+         //+ " && cd corosync"
+         //+ " && ./autogen.sh"
+         //+ " && ./configure --prefix=/usr"
+         //+ " && make"
+         //+ " && make install"
+
+         //+ " && cp init/corosync /etc/init.d/corosync"
+         //+ " && chmod a+x /etc/init.d/corosync"
+         //+ " && (groupadd ais;"
+         //+ " useradd -g ais --shell /bin/false ais;"
+         //+ " groupadd haclient;"
+         //+ " useradd -g haclient --shell /bin/false hacluster;"
+         //+ " true)"
+
+         /* corosync 1.4 */
          + " && cd /tmp/pminst"
-         + " && svn co"
-         + " http://svn.fedorahosted.org/svn/corosync/branches/flatiron"
-         + " && cd /tmp/pminst/flatiron"
+         + " && export CORO_VERSION=1.4.2"
+         + " && /usr/bin/wget"
+         + " ftp://ftp:downloads@ftp.corosync.org/downloads/"
+         + "corosync-$CORO_VERSION/corosync-$CORO_VERSION.tar.gz"
+         + " && tar xvfzp corosync-*.tar.gz"
+         + " && cd /tmp/pminst/corosync-*"
          + " && ./autogen.sh"
          + " && ./configure --with-lcrso-dir=$LCRSODIR"
          + " --sysconfdir=/etc --localstatedir=/var"
@@ -145,13 +167,12 @@ public final class DistResource_fedora extends java.util.ListResourceBundle {
          + " useradd -g haclient --shell /bin/false hacluster;"
          + " true)"
          /* pacemaker */
-         + " && /usr/bin/wget -N -O /tmp/pminst/pacemaker.tar.bz2"
-         + " http://hg.clusterlabs.org/pacemaker/1.1/archive/tip.tar.bz2"
          + " && cd /tmp/pminst"
-         + " && /bin/tar xfjp pacemaker.tar.bz2"
-         + " && cd `ls -dr Pacemaker-1-*`"
+         + " && git clone https://github.com/ClusterLabs/pacemaker"
+         + " && cd /tmp/pminst/pacemaker"
+         + " && git checkout Pacemaker-1.1.7"
          + " && ./autogen.sh"
-         + " && ./configure --with-lcrso-dir=$LCRSODIR"
+         + " && ./configure --with-acl=yes --with-lcrso-dir=$LCRSODIR"
          + " --with-ais --sysconfdir=/etc --localstatedir=/var"
          + " --disable-fatal-warnings"
          + " && make && make install"
@@ -165,25 +186,24 @@ public final class DistResource_fedora extends java.util.ListResourceBundle {
          + "/bin/rpm -q -i corosync|perl -lne"
          + " 'print \"cs:$1\" if /^Version\\s+:\\s+(\\S+)/'"},
 
-        {"Heartbeat.deleteFromRc",
-         DistResource.SUDO + "/sbin/chkconfig --del heartbeat"},
-
         {"Heartbeat.addToRc",
-         DistResource.SUDO + "/sbin/chkconfig --add heartbeat"},
+         DistResource.SUDO + "/bin/systemctl enable heartbeat.service"},
+
+        {"Heartbeat.deleteFromRc",
+         DistResource.SUDO + "/bin/systemctl disable heartbeat.service"},
 
         {"Corosync.addToRc",
-         DistResource.SUDO + "/sbin/chkconfig --level 2345 corosync on "
-         + "&& " + DistResource.SUDO + "/sbin/chkconfig --level 016 corosync off"},
+         DistResource.SUDO + "/bin/systemctl enable corosync.service"},
 
         {"Corosync.deleteFromRc",
-         DistResource.SUDO + "/sbin/chkconfig --del corosync"},
+         DistResource.SUDO + "/bin/systemctl disable corosync.service"},
 
         {"Openais.addToRc",
-         DistResource.SUDO + "/sbin/chkconfig --level 2345 openais on "
-         + "&& " + DistResource.SUDO + "/sbin/chkconfig --level 016 openais off"},
+         DistResource.SUDO + "/bin/systemctl enable openais.service"},
 
         {"Openais.deleteFromRc",
-         DistResource.SUDO + "/sbin/chkconfig --del openais"},
+         DistResource.SUDO + "/bin/systemctl disable openais.service"},
+
         {"KVM.emulator",    "/usr/bin/qemu-kvm"},
 
         /* Drbd install method 2 */
@@ -216,5 +236,28 @@ public final class DistResource_fedora extends java.util.ListResourceBundle {
          + " fi && "
          + "make && make install DESTDIR=/ && "
          + "/bin/rm -rf /tmp/drbdinst"},
+
+        {"libvirt.lxc.libpath", "/usr/libexec"},
+        {"libvirt.xen.libpath", "/usr/lib/xen"},
+
+        {"Corosync.startCorosync",
+         DistResource.SUDO + "/sbin/service corosync start"},
+
+        {"Corosync.startPcmk",
+         DistResource.SUDO + "/sbin/service pacemaker start"},
+
+        {"Corosync.stopCorosync",
+         DistResource.SUDO + "/sbin/service corosync stop"},
+
+        {"Corosync.stopCorosyncWithPcmk",
+         DistResource.SUDO + "/sbin/service pacemaker stop && "
+         + DistResource.SUDO + "/sbin/service corosync stop"},
+        {"Corosync.startCorosyncWithPcmk",
+         DistResource.SUDO + "/sbin/service corosync start;;;"
+         + DistResource.SUDO + "/sbin/service pacemaker start"},
+        {"Corosync.reloadCorosync",
+         "if ! " + DistResource.SUDO + "/sbin/service corosync status >/dev/null 2>&1; then "
+         + DistResource.SUDO + "/sbin/service corosync start; fi"},
     };
+
 }

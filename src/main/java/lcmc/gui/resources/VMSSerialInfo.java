@@ -22,7 +22,7 @@
 package lcmc.gui.resources;
 
 import lcmc.gui.Browser;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.data.VMSXML;
 import lcmc.data.VMSXML.SerialData;
 import lcmc.data.Host;
@@ -46,7 +46,8 @@ final class VMSSerialInfo extends VMSParallelSerialInfo {
     }
 
     /** Returns data for the table. */
-    @Override protected Object[][] getTableData(final String tableName) {
+    @Override
+    protected Object[][] getTableData(final String tableName) {
         if (VMSVirtualDomainInfo.HEADER_TABLE.equals(tableName)) {
             return getVMSVirtualDomainInfo().getMainTableData();
         } else if (VMSVirtualDomainInfo.SERIAL_TABLE.equals(tableName)) {
@@ -63,7 +64,8 @@ final class VMSSerialInfo extends VMSParallelSerialInfo {
     }
 
     /** Updates parameters. */
-    @Override void updateParameters() {
+    @Override
+    void updateParameters() {
         final Map<String, SerialData> serials =
                               getVMSVirtualDomainInfo().getSerials();
         if (serials != null) {
@@ -72,7 +74,7 @@ final class VMSSerialInfo extends VMSParallelSerialInfo {
                 for (final String param : getParametersFromXML()) {
                     final String oldValue = getParamSaved(param);
                     String value = getParamSaved(param);
-                    final GuiComboBox cb = paramComboBoxGet(param, null);
+                    final Widget wi = getWidget(param, null);
                     for (final Host h
                              : getVMSVirtualDomainInfo().getDefinedOnHosts()) {
                         final VMSXML vmsxml = getBrowser().getVMSXML(h);
@@ -86,9 +88,9 @@ final class VMSSerialInfo extends VMSParallelSerialInfo {
                     }
                     if (!Tools.areEqual(value, oldValue)) {
                         getResource().setValue(param, value);
-                        if (cb != null) {
+                        if (wi != null) {
                             /* only if it is not changed by user. */
-                            cb.setValue(value);
+                            wi.setValue(value);
                         }
                     }
                 }
@@ -100,7 +102,8 @@ final class VMSSerialInfo extends VMSParallelSerialInfo {
     }
 
     /** Returns string representation. */
-    @Override public String toString() {
+    @Override
+    public String toString() {
         final StringBuilder s = new StringBuilder(30);
         final String type = getParamSaved(SerialData.TYPE);
         if (type == null) {
@@ -112,10 +115,12 @@ final class VMSSerialInfo extends VMSParallelSerialInfo {
     }
 
     /** Removes this serial device without confirmation dialog. */
-    @Override protected void removeMyselfNoConfirm(final boolean testOnly) {
+    @Override
+    protected void removeMyselfNoConfirm(final boolean testOnly) {
         if (testOnly) {
             return;
         }
+        final String virshOptions = getVMSVirtualDomainInfo().getVirshOptions();
         for (final Host h : getVMSVirtualDomainInfo().getDefinedOnHosts()) {
             final VMSXML vmsxml = getBrowser().getVMSXML(h);
             if (vmsxml != null) {
@@ -125,17 +130,18 @@ final class VMSSerialInfo extends VMSParallelSerialInfo {
                                getParamSaved(SerialData.TYPE));
                 vmsxml.removeSerialXML(
                                     getVMSVirtualDomainInfo().getDomainName(),
-                                    parameters);
+                                    parameters,
+                                    virshOptions);
             }
         }
-        for (final Host h : getVMSVirtualDomainInfo().getDefinedOnHosts()) {
-            getBrowser().periodicalVMSUpdate(h);
-        }
+        getBrowser().periodicalVMSUpdate(
+                                getVMSVirtualDomainInfo().getDefinedOnHosts());
         removeNode();
     }
 
     /** Returns "add new" button. */
-    @Override protected MyButton getNewBtn0(final VMSVirtualDomainInfo vdi) {
+    @Override
+    protected MyButton getNewBtn0(final VMSVirtualDomainInfo vdi) {
         return getNewBtn(vdi);
     }
 
@@ -143,9 +149,11 @@ final class VMSSerialInfo extends VMSParallelSerialInfo {
     static MyButton getNewBtn(final VMSVirtualDomainInfo vdi) {
         final MyButton newBtn = new MyButton("Add Serial Device");
         newBtn.addActionListener(new ActionListener() {
-            @Override public void actionPerformed(final ActionEvent e) {
+            @Override
+            public void actionPerformed(final ActionEvent e) {
                 final Thread t = new Thread(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         vdi.addSerialsPanel();
                     }
                 });
@@ -156,28 +164,31 @@ final class VMSSerialInfo extends VMSParallelSerialInfo {
     }
 
     /** Modify device xml. */
-    @Override protected void modifyXML(final VMSXML vmsxml,
-                                       final Node node,
-                                       final String domainName,
-                                       final Map<String, String> params) {
+    @Override
+    protected void modifyXML(final VMSXML vmsxml,
+                             final Node node,
+                             final String domainName,
+                             final Map<String, String> params) {
         if (vmsxml != null) {
             vmsxml.modifySerialXML(node, domainName, params);
         }
     }
 
     /** Return table name that appears on the screen. */
-    @Override protected String getTableScreenName() {
+    @Override
+    protected String getTableScreenName() {
         return "Serial Device";
     }
 
     /** Return table name. */
-    @Override protected String getTableName() {
+    @Override
+    protected String getTableName() {
         return VMSVirtualDomainInfo.SERIAL_TABLE;
     }
 
     /** Returns device parameters. */
-    @Override protected Map<String, String> getHWParameters(
-                                                   final boolean allParams) {
+    @Override
+    protected Map<String, String> getHWParameters(final boolean allParams) {
         final Map<String, String> parameters =
                                           super.getHWParameters(allParams);
         setName("serial "

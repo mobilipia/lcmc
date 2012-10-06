@@ -121,6 +121,8 @@ import java.net.URL;
 import java.net.URI;
 import java.net.InetAddress;
 import java.lang.reflect.InvocationTargetException;
+import java.awt.Font;
+import javax.swing.plaf.FontUIResource;
 
 /**
  * This class provides tools, that are not classified.
@@ -386,7 +388,8 @@ public final class Tools {
     public static void error(final String msg) {
         System.out.println(ERROR_STRING + getErrorString(msg));
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 JOptionPane.showMessageDialog(
                             guiData.getMainFrame(),
                             new JScrollPane(new JTextArea(getErrorString(msg),
@@ -455,13 +458,14 @@ public final class Tools {
         if (execCallback == null) {
             final String stacktrace = getStackTrace();
             ec = new ExecCallback() {
-                             @Override public void done(final String ans) {
+                             @Override
+                             public void done(final String ans) {
                                  output.append(ans);
                              }
 
-                             @Override public void doneError(
-                                                    final String ans,
-                                                    final int exitCode) {
+                             @Override
+                             public void doneError(final String ans,
+                                                   final int exitCode) {
                                  Tools.appWarning(ERROR_STRING
                                                   + command
                                                   + " "
@@ -511,13 +515,14 @@ public final class Tools {
         if (execCallback == null) {
             final String stacktrace = getStackTrace();
             ec = new ExecCallback() {
-                             @Override public void done(final String ans) {
+                             @Override
+                             public void done(final String ans) {
                                  output.append(ans);
                              }
 
-                             @Override public void doneError(
-                                                          final String ans,
-                                                          final int exitCode) {
+                             @Override
+                             public void doneError(final String ans,
+                                                   final int exitCode) {
                                  if (outputVisible) {
                                     Tools.sshError(host,
                                                    command,
@@ -675,7 +680,8 @@ public final class Tools {
         errorPane.setMaximumSize(DIALOG_PANEL_SIZE);
         errorPane.setPreferredSize(DIALOG_PANEL_SIZE);
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 JOptionPane.showMessageDialog(guiData.getMainFrame(),
                                               new JScrollPane(errorPane),
                                               getErrorString("AppError.Title"),
@@ -695,7 +701,8 @@ public final class Tools {
         infoPane.setMaximumSize(DIALOG_PANEL_SIZE);
         infoPane.setPreferredSize(DIALOG_PANEL_SIZE);
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 JOptionPane.showMessageDialog(guiData.getMainFrame(),
                                               new JScrollPane(infoPane),
                                               getErrorString(title),
@@ -1013,6 +1020,14 @@ public final class Tools {
 
     /**
      * Returns default value for integer option from AppDefaults resource
+     * bundle and scales it according the --scale option.
+     */
+    public static int getDefaultSize(final String option) {
+        return getConfigData().scaled(getDefaultInt(option));
+    }
+
+    /**
+     * Returns default value for integer option from AppDefaults resource
      * bundle.
      *
      * @param option
@@ -1118,6 +1133,36 @@ public final class Tools {
             } catch (Exception e) {
                 return null;
             }
+        }
+        return ret;
+    }
+
+    /** Returns string that is specific to a distribution and version. */
+    @SuppressWarnings("unchecked")
+    public static List<String> getDistStrings(final String text,
+                                              String dist,
+                                              String version,
+                                              final String arch) {
+        if (dist == null) {
+            dist = "";
+        }
+        if (version == null) {
+            version = "";
+        }
+        final Locale locale = new Locale(dist, version);
+        debug("getDistStrings text: "
+              + text
+              + " dist: "
+              + dist
+              + " version: "
+              + version, 2);
+        final ResourceBundle resourceString =
+                ResourceBundle.getBundle("lcmc.configs.DistResource", locale);
+        List<String> ret;
+        try {
+            ret = (List<String>) resourceString.getObject(text);
+        } catch (Exception e) {
+            ret = new ArrayList<String>();
         }
         return ret;
     }
@@ -1517,6 +1562,13 @@ public final class Tools {
         } else {
             version1a = version1;
         }
+        int index = version1a.indexOf("-");
+        if (index < 0) {
+            index = version1a.indexOf("_");
+        }
+        if (index >= 0) {
+            version1a = version1a.substring(0, index);
+        }
 
         final Matcher m2 = p.matcher(version2);
         String version2a;
@@ -1679,7 +1731,8 @@ public final class Tools {
         popups.add(popup);
 
         list.addMouseListener(new MouseAdapter() {
-            @Override public void mouseExited(final MouseEvent evt) {
+            @Override
+            public void mouseExited(final MouseEvent evt) {
                 prevScrollingMenuIndex = -1;
                 if (callbackHash != null) {
                     for (final MyMenuItem item : callbackHash.keySet()) {
@@ -1688,13 +1741,15 @@ public final class Tools {
                     }
                 }
             }
-            @Override public void mouseEntered(final MouseEvent evt) {
+            @Override
+            public void mouseEntered(final MouseEvent evt) {
                 /* request focus here causes the applet making all
                    textfields to be not editable. */
                 list.requestFocus();
             }
 
-            @Override public void mousePressed(final MouseEvent evt) {
+            @Override
+            public void mousePressed(final MouseEvent evt) {
                 prevScrollingMenuIndex = -1;
                 if (callbackHash != null) {
                     for (final MyMenuItem item : callbackHash.keySet()) {
@@ -1702,10 +1757,12 @@ public final class Tools {
                     }
                 }
                 final Thread thread = new Thread(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         final int index = list.locationToIndex(evt.getPoint());
                         SwingUtilities.invokeLater(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 list.setSelectedIndex(index);
                                 //TODO: some submenus stay visible, during
                                 //ptest, but this breaks group popup menu
@@ -1723,9 +1780,11 @@ public final class Tools {
         });
 
         list.addMouseMotionListener(new MouseMotionAdapter() {
-            @Override public void mouseMoved(final MouseEvent evt) {
+            @Override
+            public void mouseMoved(final MouseEvent evt) {
                 final Thread thread = new Thread(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         int pIndex = list.locationToIndex(evt.getPoint());
                         final Rectangle r = list.getCellBounds(pIndex, pIndex);
                         if (r == null) {
@@ -1741,7 +1800,8 @@ public final class Tools {
                         }
                         prevScrollingMenuIndex = index;
                         SwingUtilities.invokeLater(new Runnable() {
-                            @Override public void run() {
+                            @Override
+                            public void run() {
                                 list.setSelectedIndex(index);
                             }
                         });
@@ -1771,7 +1831,8 @@ public final class Tools {
             }
         });
         list.addKeyListener(new KeyListener() {
-            @Override public void keyPressed(final KeyEvent e) {
+            @Override
+            public void keyPressed(final KeyEvent e) {
                 final int ch = e.getKeyCode();
                 if (ch == KeyEvent.VK_UP && list.getSelectedIndex() == 0) {
                     SwingUtilities.invokeLater(new Runnable() {
@@ -1788,7 +1849,8 @@ public final class Tools {
                     final MyMenuItem item =
                                        (MyMenuItem) list.getSelectedValue();
                     //SwingUtilities.invokeLater(new Runnable() {
-                    //    @Override public void run() {
+                    //    @Override
+                    //    public void run() {
                     //        //menu.setPopupMenuVisible(false);
                     //        setMenuVisible(menu, false);
                     //    }
@@ -1798,21 +1860,26 @@ public final class Tools {
                     }
                 }
             }
-            @Override public void keyReleased(final KeyEvent e) {
+            @Override
+            public void keyReleased(final KeyEvent e) {
             }
-            @Override public void keyTyped(final KeyEvent e) {
+            @Override
+            public void keyTyped(final KeyEvent e) {
             }
         });
         popup.addWindowFocusListener(new WindowFocusListener() {
-            @Override public void windowGainedFocus(final WindowEvent e) {
+            @Override
+            public void windowGainedFocus(final WindowEvent e) {
             }
-            @Override public void windowLostFocus(final WindowEvent e) {
+            @Override
+            public void windowLostFocus(final WindowEvent e) {
                 popup.dispose();
             }
         });
 
         typeToSearchField.addKeyListener(new KeyListener() {
-            @Override public void keyPressed(final KeyEvent e) {
+            @Override
+            public void keyPressed(final KeyEvent e) {
                 final int ch = e.getKeyCode();
                 if (ch == KeyEvent.VK_DOWN) {
                     SwingUtilities.invokeLater(new Runnable() {
@@ -1835,9 +1902,11 @@ public final class Tools {
                     }
                 }
             }
-            @Override public void keyReleased(final KeyEvent e) {
+            @Override
+            public void keyReleased(final KeyEvent e) {
             }
-            @Override public void keyTyped(final KeyEvent e) {
+            @Override
+            public void keyTyped(final KeyEvent e) {
             }
         });
 
@@ -1851,7 +1920,8 @@ public final class Tools {
 
             public void menuDeselected(final MenuEvent e) {
                 SwingUtilities.invokeLater(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         boolean pVisible = false;
                         JPopupMenu p = (JPopupMenu) menu.getParent();
                         while (p != null) {
@@ -1888,7 +1958,8 @@ public final class Tools {
                     }
                 });
                 SwingUtilities.invokeLater(new Runnable() {
-                    @Override public void run() {
+                    @Override
+                    public void run() {
                         /* Setting location again. Moving it one pixel fixes
                            the "gray window" problem. */
                         popup.setLocation(
@@ -2215,7 +2286,7 @@ public final class Tools {
             /* this is special case, because this object represents devices in
              * filesystem ra and also after field in drbd.conf. */
             final String device = ((DrbdResourceInfo) o1).getStringValue();
-            if (device.equals(o2)) {
+            if (device != null && device.equals(o2)) {
                 return true;
             }
             final String res = ((DrbdResourceInfo) o1).getName();
@@ -2631,17 +2702,12 @@ public final class Tools {
 
     /** Wait for next swing threads to finish. It's used for synchronization */
     public static void waitForSwing() {
-        try {
-            SwingUtilities.invokeAndWait(new Runnable() {
-                @Override public void run() {
-                    /* just wait */
-                }
-            });
-        } catch (final InterruptedException ix) {
-            Thread.currentThread().interrupt();
-        } catch (final InvocationTargetException x) {
-            Tools.printStackTrace();
-        }
+        invokeAndWait(new Runnable() {
+                          @Override
+                          public void run() {
+                              /* just wait */
+                          }
+                      });
     }
 
     /** Convenience invoke and wait function. */
@@ -2751,8 +2817,50 @@ public final class Tools {
         final String name = font.getFontName();
         final int style = font.getStyle();
         final int size = font.getSize();
-        ab.setFont(new Font(name, style, 10));
+        ab.setFont(new Font(name, style, getConfigData().scaled(10)));
         ab.setMargin(new Insets(2, 2, 2, 2));
         ab.setIconTextGap(0);
+    }
+
+    /** Trim the white space (' ', '\n') at the end of the string buffer.*/
+    public static void chomp(final StringBuffer sb) {
+        final int l = sb.length();
+        int i = l;
+
+        while (i > 0 && (sb.charAt(i - 1) == '\n')) {
+            i--;
+        }
+        if (i >=0 && i < l - 1) {
+            sb.delete(i, l - 1);
+        }
+    }
+
+    /**
+     * Resize all fonts. Must be called before GUI is started.
+     * @param scale in percent 100% - is the same size.
+     */
+    public static void resizeFonts(int scale) {
+        if (scale == 100) {
+            return;
+        }
+        if (scale < 5) {
+            scale = 5;
+        }
+        if (scale > 10000) {
+            scale = 10000;
+        }
+        for (final Enumeration e = UIManager.getDefaults().keys();
+             e.hasMoreElements();) {
+            final Object key = e.nextElement();
+            final Object value = UIManager.get(key);
+            if (value instanceof Font)    {
+                final Font f = (Font) value;
+                UIManager.put(key,
+                              new FontUIResource(
+                                         f.getName(),
+                                         f.getStyle(),
+                                         getConfigData().scaled(f.getSize()))); 
+            }
+        }
     }
 }

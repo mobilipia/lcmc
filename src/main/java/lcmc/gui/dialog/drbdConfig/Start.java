@@ -31,7 +31,7 @@ import lcmc.gui.resources.DrbdVolumeInfo;
 import lcmc.gui.resources.BlockDevInfo;
 import lcmc.gui.dialog.WizardDialog;
 import lcmc.gui.SpringUtilities;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.data.ConfigData;
 import lcmc.data.AccessMode;
 
@@ -57,7 +57,7 @@ public final class Start extends WizardDialog {
     /** Serial version UID. */
     private static final long serialVersionUID = 1L;
     /** DRBD resource pulldown menu. */
-    private GuiComboBox drbdResourceCB;
+    private Widget drbdResourceWi;
     /** Width of the combo boxes. */
     private static final int COMBOBOX_WIDTH = 250;
     /** DRBD info object. */
@@ -81,9 +81,10 @@ public final class Start extends WizardDialog {
     }
 
     /** Applies the changes and returns next dialog (BlockDev). */
-    @Override public WizardDialog nextDialog() {
+    @Override
+    public WizardDialog nextDialog() {
         boolean newResource = false;
-        final Info i = (Info) drbdResourceCB.getValue();
+        final Info i = (Info) drbdResourceWi.getValue();
         if (i.getStringValue() == null) {
             final List<BlockDevInfo> bdis =
                     new ArrayList<BlockDevInfo>(Arrays.asList(blockDevInfo1,
@@ -113,7 +114,8 @@ public final class Start extends WizardDialog {
      * Returns the title of the dialog. It is defined as
      * Dialog.DrbdConfig.Start.Title in TextResources.
      */
-    @Override protected String getDialogTitle() {
+    @Override
+    protected String getDialogTitle() {
         return Tools.getString("Dialog.DrbdConfig.Start.Title");
     }
 
@@ -121,22 +123,26 @@ public final class Start extends WizardDialog {
      * Returns the description of the dialog. It is defined as
      * Dialog.DrbdConfig.Start.Description in TextResources.
      */
-    @Override protected String getDescription() {
+    @Override
+    protected String getDescription() {
         return Tools.getString("Dialog.DrbdConfig.Start.Description");
     }
 
     /** Inits dialog. */
-    @Override protected void initDialog() {
+    @Override
+    protected void initDialog() {
         super.initDialog();
         enableComponentsLater(new JComponent[]{buttonClass(nextButton())});
     }
 
     /** Inits the dialog after it becomes visible. */
-    @Override protected void initDialogAfterVisible() {
+    @Override
+    protected void initDialogAfterVisible() {
         enableComponents();
         if (Tools.getConfigData().getAutoOptionGlobal("autodrbd") != null) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     pressNextButton();
                 }
             });
@@ -144,7 +150,8 @@ public final class Start extends WizardDialog {
     }
 
     /** Returns input pane where user can configure a drbd resource. */
-    @Override protected JComponent getInputPane() {
+    @Override
+    protected JComponent getInputPane() {
         final JPanel pane = new JPanel(new SpringLayout());
         final JPanel inputPane = new JPanel(new SpringLayout());
 
@@ -158,19 +165,19 @@ public final class Start extends WizardDialog {
         for (final DrbdResourceInfo dri : drbdInfo.getDrbdResources()) {
             choices.add(dri);
         }
-        drbdResourceCB = new GuiComboBox(null,
-                                         choices.toArray(
-                                                    new Info[choices.size()]),
-                                         null, /* units */
-                                         GuiComboBox.Type.COMBOBOX,
-                                         null, /* regexp */
-                                         COMBOBOX_WIDTH,
-                                         null, /* abbrv */
-                                         new AccessMode(
-                                                  ConfigData.AccessType.RO,
-                                                  false)); /* only adv. mode */
+        drbdResourceWi = new Widget(null,
+                                    choices.toArray(
+                                               new Info[choices.size()]),
+                                    null, /* units */
+                                    Widget.Type.COMBOBOX,
+                                    null, /* regexp */
+                                    COMBOBOX_WIDTH,
+                                    null, /* abbrv */
+                                    new AccessMode(
+                                             ConfigData.AccessType.RO,
+                                             false)); /* only adv. mode */
         inputPane.add(drbdResourceLabel);
-        inputPane.add(drbdResourceCB);
+        inputPane.add(drbdResourceWi);
         SpringUtilities.makeCompactGrid(inputPane, 1, 2,  // rows, cols
                                                    1, 1,  // initX, initY
                                                    1, 1); // xPad, yPad

@@ -27,7 +27,7 @@ import lcmc.data.AccessMode;
 import lcmc.utilities.Tools;
 import lcmc.gui.SpringUtilities;
 import lcmc.gui.TerminalPanel;
-import lcmc.gui.GuiComboBox;
+import lcmc.gui.Widget;
 import lcmc.gui.dialog.WizardDialog;
 
 import javax.swing.JLabel;
@@ -53,13 +53,13 @@ public final class NewHost extends DialogHost {
     /** Serial version UID. */
     private static final long serialVersionUID = 1L;
     /** hostField can be ip or hostname with or without domainname. */
-    private GuiComboBox hostField;
+    private Widget hostField;
     /** User name field. */
-    private GuiComboBox usernameField;
+    private Widget usernameField;
     /** SSH Port field. */
-    private GuiComboBox sshPortField;
+    private Widget sshPortField;
     /** Whether sudo should be used. */
-    private GuiComboBox useSudoField;
+    private Widget useSudoField;
     /** Whether the fields are big (if more hops are being used). */
     private boolean bigFields = false;
     /** Normal widths of the fields. */
@@ -77,7 +77,8 @@ public final class NewHost extends DialogHost {
     }
 
     /** Finishes the dialog, stores the values and adds the host tab. */
-    @Override protected void finishDialog() {
+    @Override
+    protected void finishDialog() {
         final String hostnameEntered = hostField.getStringValue().trim();
         getHost().setHostnameEntered(hostnameEntered);
         final String username = usernameField.getStringValue().trim();
@@ -98,7 +99,8 @@ public final class NewHost extends DialogHost {
     }
 
     /** Sets nextDialog to Configuration. */
-    @Override public WizardDialog nextDialog() {
+    @Override
+    public WizardDialog nextDialog() {
         return new Configuration(this, getHost());
     }
 
@@ -106,7 +108,8 @@ public final class NewHost extends DialogHost {
      * Checks host and username field and if both are not empty enables
      * next and finish buttons.
      */
-    @Override protected void checkFields(final GuiComboBox field) {
+    @Override
+    protected void checkFields(final Widget field) {
         final String hs = hostField.getStringValue().trim();
         final String us = usernameField.getStringValue().trim();
         final String ps = sshPortField.getStringValue().trim();
@@ -142,7 +145,8 @@ public final class NewHost extends DialogHost {
 
         if (hf) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     hostField.setBackground(getHost().getHostnameEntered(),
                                             getHost().getHostnameEntered(),
                                             true);
@@ -154,15 +158,17 @@ public final class NewHost extends DialogHost {
 
         if (uf) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     usernameField.setBackground(getHost().getUsername(),
                                                 getHost().getUsername(),
                                                 true);
                     if (useSudoField != null) {
-                        if ("root".equals(us)) {
+                        if (Host.ROOT_USER.equals(us)) {
                             useSudoField.setValueAndWait("false");
                             useSudoField.setEnabled(false);
                         } else {
+                            useSudoField.setValueAndWait("true");
                             useSudoField.setEnabled(true);
                         }
                     }
@@ -174,7 +180,8 @@ public final class NewHost extends DialogHost {
 
         if (pf) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     sshPortField.setBackground(getHost().getSSHPort(),
                                                getHost().getSSHPort(),
                                                true);
@@ -188,7 +195,8 @@ public final class NewHost extends DialogHost {
         final boolean userField = hf;
         final boolean sshPortField = pf;
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 buttonClass(nextButton()).setEnabled(hostField
                                                      && userField
                                                      && sshPortField);
@@ -200,7 +208,8 @@ public final class NewHost extends DialogHost {
      * Returns the title of the dialog, defined as
      * Dialog.Host.NewHost.Title in TextResources.
      */
-    @Override protected String getHostDialogTitle() {
+    @Override
+    protected String getHostDialogTitle() {
         return Tools.getString("Dialog.Host.NewHost.Title");
     }
 
@@ -208,28 +217,33 @@ public final class NewHost extends DialogHost {
      * Returns the description of the dialog, defined as
      * Dialog.Host.NewHost.Description in TextResources.
      */
-    @Override protected String getDescription() {
+    @Override
+    protected String getDescription() {
         return Tools.getString("Dialog.Host.NewHost.Description");
     }
 
     /** Inits the dialog. */
-    @Override protected void initDialog() {
+    @Override
+    protected void initDialog() {
         super.initDialog();
         enableComponentsLater(new JComponent[]{buttonClass(nextButton())});
     }
 
     /** Inits the dialog. */
-    @Override protected void initDialogAfterVisible() {
+    @Override
+    protected void initDialogAfterVisible() {
         enableComponents();
-        checkFields((GuiComboBox) null);
+        checkFields((Widget) null);
         SwingUtilities.invokeLater(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 hostField.requestFocus();
             }
         });
         if (!Tools.getConfigData().getAutoHosts().isEmpty()) {
             SwingUtilities.invokeLater(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     hostField.setValue(
                                 Tools.getConfigData().getAutoHosts().get(0));
                 }
@@ -243,7 +257,8 @@ public final class NewHost extends DialogHost {
      * Returns an input pane where user can enter a host and username. Username
      * is normally root and host can be entered either as ip or node name etc.
      */
-    @Override protected JComponent getInputPane() {
+    @Override
+    protected JComponent getInputPane() {
         final JPanel p = new JPanel(new BorderLayout());
         final JPanel inputPane = new JPanel(new SpringLayout());
         inputPane.setBackground(Tools.getDefaultColor(
@@ -255,7 +270,7 @@ public final class NewHost extends DialogHost {
                         Tools.getString("Dialog.Host.NewHost.EnterHost"));
         inputPane.add(hostLabel);
         final String regexp = "^[,\\w.-]+$";
-        hostField = new GuiComboBox(getHost().getHostnameEntered(),
+        hostField = new Widget(getHost().getHostnameEntered(),
                                     null, /* items */
                                     null, /* units */
                                     null, /* type */
@@ -284,7 +299,7 @@ public final class NewHost extends DialogHost {
                 sshPort = SSH_PORT;
             }
         }
-        sshPortField = new GuiComboBox(sshPort,
+        sshPortField = new Widget(sshPort,
                                        null, /* items */
                                        null, /* units */
                                        null, /* type */
@@ -319,16 +334,15 @@ public final class NewHost extends DialogHost {
             users.add(SSH_ROOT_USER);
         }
         users.add(user);
-        usernameField = new GuiComboBox(
-                                    userName,
-                                    users.toArray(new String[users.size()]),
-                                    null, /* units */
-                                    null, /* type */
-                                    regexp,
-                                    FIELD_WIDTH,
-                                    null, /* abbrv */
-                                    new AccessMode(ConfigData.AccessType.RO,
-                                                   false)); /* only adv. mode */
+        usernameField = new Widget(userName,
+                                   users.toArray(new String[users.size()]),
+                                   null, /* units */
+                                   null, /* type */
+                                   regexp,
+                                   FIELD_WIDTH,
+                                   null, /* abbrv */
+                                   new AccessMode(ConfigData.AccessType.RO,
+                                                  false)); /* only adv. mode */
         usernameField.setEditable(true);
         addCheckField(usernameField);
         usernameLabel.setLabelFor(usernameField);
@@ -348,16 +362,15 @@ public final class NewHost extends DialogHost {
                 useSudo = false;
             }
         }
-        useSudoField = new GuiComboBox(
-                                   useSudo.toString(),
-                                   new String[]{"true", "false"}, /* items */
-                                   null, /* units */
-                                   null, /* type */
-                                   null, /* regexp */
-                                   50,
-                                   null, /* abbrv */
-                                   new AccessMode(ConfigData.AccessType.RO,
-                                                  false)); /* only adv. mode */
+        useSudoField = new Widget(useSudo.toString(),
+                                  new String[]{"true", "false"}, /* items */
+                                  null, /* units */
+                                  null, /* type */
+                                  null, /* regexp */
+                                  50,
+                                  null, /* abbrv */
+                                  new AccessMode(ConfigData.AccessType.RO,
+                                                 false)); /* only adv. mode */
         //addCheckField(useSudoField);
         useSudoLabel.setLabelFor(useSudoField);
         inputPane.add(useSudoField);

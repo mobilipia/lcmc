@@ -101,9 +101,7 @@ public final class VGRemove extends LV {
 
     /** Enables and disabled buttons. */
     protected void checkButtons() {
-        if (blockDevInfo.getBlockDevice().isPhysicalVolume()) {
-            SwingUtilities.invokeLater(new EnableRemoveRunnable(true));
-        }
+        SwingUtilities.invokeLater(new EnableRemoveRunnable(true));
     }
 
     private class EnableRemoveRunnable implements Runnable {
@@ -113,7 +111,8 @@ public final class VGRemove extends LV {
             this.enable = enable;
         }
 
-        @Override public void run() {
+        @Override
+        public void run() {
             final boolean e = enable;
             removeButton.setEnabled(e);
         }
@@ -128,8 +127,14 @@ public final class VGRemove extends LV {
         inputPane.setBackground(Browser.BUTTON_PANEL_BACKGROUND);
 
         inputPane.add(new JLabel("Volume Group: "));
-        final String vgName = blockDevInfo.getBlockDevice()
+        String vgName;
+        if (blockDevInfo.getBlockDevice().isDrbd()) {
+            vgName = blockDevInfo.getBlockDevice().getDrbdBlockDevice()
                                         .getVolumeGroupOnPhysicalVolume();
+        } else {
+            vgName = blockDevInfo.getBlockDevice()
+                                        .getVolumeGroupOnPhysicalVolume();
+        }
         inputPane.add(new JLabel(vgName));
         removeButton.addActionListener(new RemoveActionListener());
         inputPane.add(removeButton);
@@ -149,6 +154,16 @@ public final class VGRemove extends LV {
             }
 
         }
+        if (blockDevInfo.getBlockDevice().isDrbd()) {
+            for (final BlockDevice bd
+                              : blockDevInfo.getHost().getDrbdBlockDevices()) {
+                final String thisVG = bd.getVolumeGroupOnPhysicalVolume();
+                if (vgName.equals(thisVG)) {
+                    bds.add(bd.getName());
+                }
+
+            }
+        }
         bdPane.add(new JLabel(Tools.join(", ", bds)));
         pane.add(bdPane);
         final JPanel hostsPane = new JPanel(
@@ -163,7 +178,8 @@ public final class VGRemove extends LV {
             if (blockDevInfo.getHost() == h) {
                 hostCheckBoxes.get(h).setEnabled(false);
                 hostCheckBoxes.get(h).setSelected(true);
-            } else if (!vgs.contains(vgName)) {
+            } else if (blockDevInfo.getBlockDevice().isDrbd()
+                       || !vgs.contains(vgName)) {
                 hostCheckBoxes.get(h).setEnabled(false);
                 hostCheckBoxes.get(h).setSelected(false);
             } else {
@@ -187,15 +203,24 @@ public final class VGRemove extends LV {
 
     /** Remove action listener. */
     private class RemoveActionListener implements ActionListener {
-        @Override public void actionPerformed(final ActionEvent e) {
+        @Override
+        public void actionPerformed(final ActionEvent e) {
             final Thread thread = new Thread(new Runnable() {
-                @Override public void run() {
+                @Override
+                public void run() {
                     Tools.invokeAndWait(new EnableRemoveRunnable(false));
                     disableComponents();
                     getProgressBar().start(REMOVE_TIMEOUT
                                            * hostCheckBoxes.size());
-                    final String vgName = blockDevInfo.getBlockDevice()
+                    String vgName;
+                    if (blockDevInfo.getBlockDevice().isDrbd()) {
+                        vgName = blockDevInfo.getBlockDevice()
+                                        .getDrbdBlockDevice()
                                              .getVolumeGroupOnPhysicalVolume();
+                    } else {
+                        vgName = blockDevInfo.getBlockDevice()
+                                             .getVolumeGroupOnPhysicalVolume();
+                    }
                     boolean oneFailed = false;
                     for (final Host h : hostCheckBoxes.keySet()) {
                         if (hostCheckBoxes.get(h).isSelected()) {
@@ -249,7 +274,8 @@ public final class VGRemove extends LV {
             super();
             this.onDeselect = onDeselect;
         }
-        @Override public void itemStateChanged(final ItemEvent e) {
+        @Override
+        public void itemStateChanged(final ItemEvent e) {
             if (e.getStateChange() == ItemEvent.SELECTED
                 || onDeselect) {
                 checkButtons();

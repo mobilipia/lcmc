@@ -150,7 +150,8 @@ public final class RoboTest {
         info("start click test in 10 seconds");
         prevP = null;
         final Thread thread = new Thread(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 sleepNoFactor(10000);
                 Robot rbt = null;
                 try {
@@ -202,7 +203,8 @@ public final class RoboTest {
         info("start mouse move test in 10 seconds");
         prevP = null;
         final Thread thread = new Thread(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 sleepNoFactor(10000);
                 Robot rbt = null;
                 try {
@@ -289,7 +291,8 @@ public final class RoboTest {
             }
         }
         final Thread thread = new Thread(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 sleepNoFactor(3000);
                 robot = null;
                 try {
@@ -549,6 +552,7 @@ public final class RoboTest {
                         }
                     }
                 } else if ("Storage (DRBD, LVM)".equals(selected)) {
+                    Tools.getGUIData().expandTerminalSplitPane(1);
                     if ("0".equals(index)) {
                         /* all DRBD tests */
                         int i = 1;
@@ -659,7 +663,7 @@ public final class RoboTest {
                         }
                     }
                 } else if ("VMs (KVM, Xen)".equals(selected)) {
-                    if ("1".equals(index) || "x1".equals(index)) {
+                    if ("1".equals(index)) {
                         /* VMs */
                         int i = 1;
                         while (!aborted) {
@@ -673,13 +677,10 @@ public final class RoboTest {
                             resetTerminalAreas();
                             i++;
                         }
-                    } else if ("2".equals(index) || "x2".equals(index)) {
+                    } else if ("2".equals(index)) {
                         /* VMs */
                         int i = 1;
                         String testIndex = "1";
-                        if (index.charAt(0) == 'x') {
-                            testIndex = "x1";
-                        }
                         while (!aborted) {
                             final long startTime = System.currentTimeMillis();
                             info("test" + index + " no " + i);
@@ -695,9 +696,6 @@ public final class RoboTest {
                         /* VMs */
                         int i = 1;
                         String testIndex = "1";
-                        if (index.charAt(0) == 'x') {
-                            testIndex = "x1";
-                        }
                         while (!aborted) {
                             final long startTime = System.currentTimeMillis();
                             info("test" + index + " no " + i);
@@ -718,6 +716,20 @@ public final class RoboTest {
                                                  - startTime) / 1000;
                         info("test" + index + ", secs: " + secs);
                         resetTerminalAreas();
+                    } else if ("5".equals(index)) {
+                        /* VMs */
+                        int i = 1;
+                        while (!aborted) {
+                            final long startTime = System.currentTimeMillis();
+                            info("test" + index + " no " + i);
+                            startVMTest5("vm-test" + index, 2);
+                            final int secs = (int) (System.currentTimeMillis()
+                                                     - startTime) / 1000;
+                            info("test" + index + " no " + i + ", secs: "
+                                 + secs);
+                            resetTerminalAreas();
+                            i++;
+                        }
                     }
                 }
                 info(selected + " test " + index + " done");
@@ -813,16 +825,16 @@ public final class RoboTest {
         moveTo(ipX, ipY);
         rightClick(); /* popup */
         moveTo(ipX + 57, ipY + 28);
-        moveTo(ipX + 270, ipY + 28);
-        moveTo(ipX + 267, ipY + 52);
+        moveTo(ipX + 410, ipY + 28);
+        moveTo(ipX + 407, ipY + 52);
         leftClick(); /* choose ipaddr */
         removeResource(ipX, ipY, -15, false);
         /* again */
         moveTo(ipX, ipY);
         rightClick(); /* popup */
         moveTo(ipX + 57, ipY + 28);
-        moveTo(ipX + 270, ipY + 28);
-        moveTo(ipX + 267, ipY + 52);
+        moveTo(ipX + 410, ipY + 28);
+        moveTo(ipX + 407, ipY + 52);
         leftClick(); /* choose ipaddr */
 
         moveTo(1070, 357);
@@ -840,12 +852,8 @@ public final class RoboTest {
         leftClick(); /* apply */
         /* CIDR netmask 24 */
         sleep(10000);
-        moveTo(1080, 81); /* advanced */
-        sleep(2000);
-        leftClick();
-        sleep(2000);
 
-        moveTo(960, 427); /* CIDR */
+        moveTo(960, 412); /* CIDR */
         sleep(3000);
         leftClick();
         sleep(2000);
@@ -853,11 +861,6 @@ public final class RoboTest {
         sleep(200);
         press(KeyEvent.VK_4);
         sleep(1000);
-
-        moveTo(1080, 81); /* not advanced */
-        sleep(2000);
-        leftClick();
-        sleep(2000);
 
         moveTo(814, 141);
         sleep(6000); /* ptest */
@@ -1019,21 +1022,27 @@ public final class RoboTest {
         addConstraint(gx, gy - 30, 1, true);
         checkTest(testName, 3.1); /* 3.1 */
 
-        /* move up, move down */
-        for (int i = 0; i < 2; i++) {
-            moveTo(137, 281);
-            rightClick();
-            sleep(1000);
-            moveTo(221, 430);
-            leftClick(); /* move res 3 up */
-            sleepNoFactor(2000);
-            checkTest(testName, 3.11); /* 3.11 */
-            moveTo(137, 265);
-            rightClick();
-            moveTo(236, 452);
-            leftClick(); /* move res 3 down */
-            sleepNoFactor(2000);
-            checkTest(testName, 3.12); /* 3.12 */
+        try {
+            if (pmV != null && Tools.compareVersions(pmV, "1.0.8") > 0) {
+                /* move up, move down */
+                for (int i = 0; i < 2; i++) {
+                    moveTo(137, 281);
+                    rightClick();
+                    sleep(1000);
+                    moveTo(221, 430);
+                    leftClick(); /* move res 3 up */
+                    sleepNoFactor(2000);
+                    checkTest(testName, 3.11); /* 3.11 */
+                    moveTo(137, 265);
+                    rightClick();
+                    moveTo(236, 452);
+                    leftClick(); /* move res 3 down */
+                    sleepNoFactor(2000);
+                    checkTest(testName, 3.12); /* 3.12 */
+                }
+            }
+        } catch (Exceptions.IllegalVersionException e) {
+            Tools.appWarning(e.getMessage(), e);
         }
 
         /* same as */
@@ -1419,6 +1428,71 @@ public final class RoboTest {
         unmigrateResource(1020, 132, 55); /* actions menu unmigrate */
         sleep(5000);
         checkTest(testName, 28);
+
+        moveTo(700, 450); /* rectangle */
+        leftPress();
+        moveTo(220, 115);
+        leftRelease();
+
+        moveTo(ipX, ipY);
+        rightClick();
+        sleep(500);
+
+        moveTo(ipX + 30, ipY); /* ptest */
+        moveToSlowly(ipX + 30, ipY + 350);
+        moveTo(ipX, ipY);
+
+        press(KeyEvent.VK_DOWN);
+        sleep(500);
+        press(KeyEvent.VK_ENTER); /* standby selected hosts */
+        checkTest(testName, 28.1);
+
+        moveTo(700, 450);
+        leftPress();
+        moveTo(220, 115);
+        leftRelease();
+        moveTo(ipX, ipY);
+        rightClick();
+        sleep(500);
+        press(KeyEvent.VK_DOWN);
+        sleep(500);
+        press(KeyEvent.VK_ENTER); /* online selected hosts */
+        checkTest(testName, 28.2);
+
+        moveTo(700, 450);
+        leftPress();
+        moveTo(220, 115);
+        leftRelease();
+        moveTo(ipX, ipY);
+        rightClick();
+        sleep(500);
+        press(KeyEvent.VK_DOWN);
+        sleep(500);
+        press(KeyEvent.VK_DOWN);
+        sleep(500);
+        press(KeyEvent.VK_DOWN);
+        sleep(500);
+        press(KeyEvent.VK_ENTER); /* stop selected resources */
+        checkTest(testName, 28.3);
+
+        moveTo(700, 450);
+        leftPress();
+        moveTo(220, 115);
+        leftRelease();
+        moveTo(ipX, ipY);
+        rightClick();
+        sleep(500);
+        press(KeyEvent.VK_DOWN);
+        sleep(500);
+        press(KeyEvent.VK_DOWN);
+        sleep(500);
+        press(KeyEvent.VK_DOWN);
+        sleep(500);
+        press(KeyEvent.VK_ENTER); /* start selected resources */
+        moveTo(700, 520); /* reset selection */
+        leftClick();
+        checkTest(testName, 28.4);
+
         stopResource(ipX, ipY, 0);
         sleep(5000);
         moveTo(gx, gy);
@@ -1456,7 +1530,7 @@ public final class RoboTest {
         moveTo(700, 520);
         rightClick(); /* popup */
         sleep(3000);
-        moveTo(760, 596);
+        moveTo(760, 620);
         sleep(3000);
         leftClick();
         moveTo(1080, 81); /* not advanced */
@@ -1475,7 +1549,7 @@ public final class RoboTest {
         moveTo(700, 520);
         rightClick(); /* popup */
         sleep(3000);
-        moveTo(760, 626);
+        moveTo(760, 650);
         sleep(3000);
         leftClick();
         if (!isColor(365, 360, AppDefaults.BACKGROUND, true)) {
@@ -1703,7 +1777,7 @@ public final class RoboTest {
             sleep(5000);
         } else {
             removeEverything();
-            removePlaceHolder(phX, phY);
+            removePlaceHolder(phX, phY, false);
         }
         if (!aborted) {
             sleepNoFactor(20000);
@@ -1790,8 +1864,8 @@ public final class RoboTest {
 
             /* TEST test */
             if (i < count - 1) {
-                removePlaceHolder(ph1X, ph1Y);
-                removePlaceHolder(ph2X, ph2Y);
+                removePlaceHolder(ph1X, ph1Y, true);
+                removePlaceHolder(ph2X, ph2Y, true);
             }
         }
         moveTo(809, 144); /* ptest */
@@ -1802,8 +1876,8 @@ public final class RoboTest {
         stopEverything();
         checkTest("test4", 4);
         removeEverything();
-        //removePlaceHolder(ph1X, ph1Y);
-        //removePlaceHolder(ph2X, ph2Y);
+        removePlaceHolder(ph1X, ph1Y, false);
+        removePlaceHolder(ph2X, ph2Y, false);
         sleep(40000);
     }
 
@@ -1942,7 +2016,22 @@ public final class RoboTest {
             stopResource(dummy1X, dummy1Y, 0);
             checkTest("test7", 3);
             sleep(5000);
+            /* copy/paste */
+            moveTo(dummy1X + 10 , dummy1Y + 10);
+            leftClick();
+            robot.keyPress(KeyEvent.VK_CONTROL);
+            press(KeyEvent.VK_C);
+            press(KeyEvent.VK_V);
+            robot.keyRelease(KeyEvent.VK_CONTROL);
+            moveTo(dummy1X + 10 , dummy1Y + 90);
+            leftClick();
+            moveTo(809, 144); /* ptest */
+            sleep(4000);
+            leftClick(); /* apply */
+            checkTest("test7", 4);
+
             removeResource(dummy1X, dummy1Y, -15, true);
+            removeResource(dummy1X, dummy1Y + 90, -15, true);
         }
         System.gc();
     }
@@ -1997,13 +2086,13 @@ public final class RoboTest {
             /* create dummy */
             moveTo(gx + 46, gy + 11);
             rightClick(); /* group popup */
-            sleep(2000 + i * 500);
+            sleep(2000);
             moveTo(gx + 80, gy + 20);
             moveTo(gx + 84, gy + 22);
             moveTo(gx + 580, gy + 22);
             sleep(1000);
             typeDummy();
-            sleep(i * 300);
+            sleep(300);
             setTimeouts(true);
             moveTo(809, 144); /* ptest */
             sleep(6000);
@@ -2013,7 +2102,23 @@ public final class RoboTest {
             stopResource(gx, gy, 0);
             sleep(6000);
             checkTest("testA", 3);
+
+            /* copy/paste */
+            moveTo(gx + 10 , gy + 10);
+            leftClick();
+            robot.keyPress(KeyEvent.VK_CONTROL);
+            press(KeyEvent.VK_C);
+            press(KeyEvent.VK_V);
+            robot.keyRelease(KeyEvent.VK_CONTROL);
+            moveTo(gx + 10 , gy + 90);
+            leftClick();
+            moveTo(809, 144); /* ptest */
+            sleep(4000);
+            leftClick(); /* apply */
+            checkTest("testA", 4);
+
             removeResource(gx, gy, 0, true);
+            removeResource(gx, gy + 90, 0, true);
             resetTerminalAreas();
         }
         System.gc();
@@ -2026,14 +2131,6 @@ public final class RoboTest {
         final int dummy1Y = 207;
         disableStonith();
         String testName = "testB";
-        final String pmV = cluster.getHostsArray()[0].getPacemakerVersion();
-        try {
-            if (pmV != null && Tools.compareVersions(pmV, "1.1.6") < 0) {
-                testName = "testB-1.0";
-            }
-        } catch (Exceptions.IllegalVersionException e) {
-            Tools.appWarning(e.getMessage(), e);
-        }
         for (int i = count; i > 0; i--) {
             if (i % 5 == 0) {
                 info(testName + " I: " + i);
@@ -2047,6 +2144,21 @@ public final class RoboTest {
             stopResource(dummy1X, dummy1Y, 0);
             checkTest(testName, 3);
             sleep(5000);
+            /* copy/paste */
+            moveTo(dummy1X + 10 , dummy1Y + 10);
+            leftClick();
+            robot.keyPress(KeyEvent.VK_CONTROL);
+            press(KeyEvent.VK_C);
+            press(KeyEvent.VK_V);
+            robot.keyRelease(KeyEvent.VK_CONTROL);
+            moveTo(dummy1X + 10 , dummy1Y + 90);
+            leftClick();
+            moveTo(809, 144); /* ptest */
+            sleep(4000);
+            leftClick(); /* apply */
+            checkTest("testB", 4);
+
+            removeResource(dummy1X, dummy1Y + 90, -15, true);
             removeResource(dummy1X, dummy1Y, -15, true);
             resetTerminalAreas();
         }
@@ -2059,14 +2171,6 @@ public final class RoboTest {
         final int statefulY = 207;
         disableStonith();
         String testName = "testC";
-        final String pmV = cluster.getHostsArray()[0].getPacemakerVersion();
-        try {
-            if (pmV != null && Tools.compareVersions(pmV, "1.1.6") < 0) {
-                testName = "testC-1.0";
-            }
-        } catch (Exceptions.IllegalVersionException e) {
-            Tools.appWarning(e.getMessage(), e);
-        }
         for (int i = count; i > 0; i--) {
             if (i % 5 == 0) {
                 info(testName + " I: " + i);
@@ -2104,7 +2208,23 @@ public final class RoboTest {
             stopResource(statefulX, statefulY, -20);
             checkTest(testName, 2);
             sleep(5000);
+            /* copy/paste */
+            stopResource(statefulX, statefulY, -20);
+            leftClick();
+            robot.keyPress(KeyEvent.VK_CONTROL);
+            press(KeyEvent.VK_C);
+            press(KeyEvent.VK_V);
+            robot.keyRelease(KeyEvent.VK_CONTROL);
+            moveTo(245, statefulY + 90);
+            leftClick();
+            moveTo(809, 144); /* ptest */
+            sleep(4000);
+            leftClick(); /* apply */
+            checkTest(testName, 4);
+
+
             removeResource(statefulX, statefulY, -20, true);
+            removeResource(245, statefulY + 90, -20, true);
             resetTerminalAreas();
         }
     }
@@ -2152,7 +2272,7 @@ public final class RoboTest {
                 leftClick();
             }
         }
-        removeResource(dummy1X, dummy1Y, -20, true);
+        removeResource(dummy1X, dummy1Y, -20, false);
     }
 
     /** Host wizard deadlock. */
@@ -2186,15 +2306,7 @@ public final class RoboTest {
         final int gy = 207;
         disableStonith();
         String testName = "testF";
-        final String pmV = cluster.getHostsArray()[0].getPacemakerVersion();
         final String distro = cluster.getHostsArray()[0].getDist();
-        try {
-            if (pmV != null && Tools.compareVersions(pmV, "1.1.6") < 0) {
-                testName = "testF-1.0";
-            }
-        } catch (Exceptions.IllegalVersionException e) {
-            Tools.appWarning(e.getMessage(), e);
-        }
         checkTest(testName, 1);
         /* group with dummy resources */
         moveTo(gx, gy);
@@ -2216,13 +2328,13 @@ public final class RoboTest {
             /* create dummy */
             moveTo(gxM + 46, gyM + 11);
             rightClick(); /* group popup */
-            sleep(2000 + i * 500);
+            sleep(2000);
             moveTo(gxM + 80, gyM + 20);
             moveTo(gxM + 84, gyM + 22);
             moveTo(gxM + 580, gyM + 22);
             sleep(1000);
             typeDummy();
-            sleep(i * 300);
+            sleep(300);
             setTimeouts(true);
             if (type == 1) {
                 moveTo(809, 144); /* ptest */
@@ -2256,7 +2368,7 @@ public final class RoboTest {
         stopResource(gx, gy, 0);
         sleep(6000);
         checkTest(testName, 4);
-        removeResource(gx, gy, -40, true);
+        removeResource(gx, gy, -30, true);
         resetTerminalAreas();
         System.gc();
     }
@@ -2536,20 +2648,24 @@ public final class RoboTest {
     private static void removeGroup(final int x, final int y, final int corr) {
         moveTo(x + 20, y);
         rightClick();
-        sleep(120000);
+        sleep(30000);
         moveTo(x + 40 , y + 250 + corr);
         leftClick();
         confirmRemove();
     }
 
     /** Removes placeholder. */
-    private static void removePlaceHolder(final int x, final int y) {
+    private static void removePlaceHolder(final int x,
+                                          final int y,
+                                          boolean confirm) {
         moveTo(x + 20, y);
         rightClick();
         sleep(1000);
         moveTo(x + 40 , y + 60);
         leftClick();
-        confirmRemove();
+        if (confirm) {
+            confirmRemove();
+        }
     }
 
     /** Confirms remove dialog. */
@@ -2596,9 +2712,9 @@ public final class RoboTest {
         sleep(1000);
         leftClick(); /* select */
 
-        moveTo(1070, 448);
+        moveTo(1070, 498);
         leftClick(); /* pull down */
-        moveTo(1044, 472);
+        moveTo(1044, 522);
         leftClick(); /* choose */
         moveTo(814, 141);
         sleep(6000); /* ptest */
@@ -2813,14 +2929,6 @@ public final class RoboTest {
         aborted = false;
         disableStonith();
         String testName = "test3";
-        final String pmV = cluster.getHostsArray()[0].getPacemakerVersion();
-        try {
-            if (pmV != null && Tools.compareVersions(pmV, "1.1.6") < 0) {
-                testName = "test3-1.0";
-            }
-        } catch (Exceptions.IllegalVersionException e) {
-            Tools.appWarning(e.getMessage(), e);
-        }
         for (int i = count; i > 0; i--) {
             if (i % 5 == 0) {
                 info(testName + " I: " + i);
@@ -2928,8 +3036,17 @@ public final class RoboTest {
         final Point2D appP =
                      Tools.getGUIData().getMainFrameContentPane()
                                         .getLocationOnScreen();
+        int yCor = 0;
+        try {
+            if (Tools.compareVersions(
+                            System.getProperty("java.version"), "1.0.8") >= 0) {
+                yCor = -5;
+            }
+        } catch (Exceptions.IllegalVersionException e) {
+            Tools.appWarning(e.getMessage(), e);
+        }
         final int appX = (int) appP.getX() + fromX;
-        final int appY = (int) appP.getY() + fromY;
+        final int appY = (int) appP.getY() + fromY + yCor;
         for (int i = 0; i < 7; i++) {
             boolean isColor = false;
             for (int y = -20; y < 20; y++) {
@@ -2958,6 +3075,12 @@ public final class RoboTest {
         return !expected;
     }
 
+    private static void moveToSlowly(final int toX, final int toY) {
+        slowFactor *= 50;
+        moveTo(toX, toY);
+        slowFactor /= 50;
+    }
+
     /** Move to position. */
     private static void moveTo(final int toX, final int toY) {
         if (aborted) {
@@ -2970,8 +3093,17 @@ public final class RoboTest {
         final int origY = (int) origP.getY();
         final Point2D endP =
             Tools.getGUIData().getMainFrameContentPane().getLocationOnScreen();
+        int yCor = 0;
+        try {
+            if (Tools.compareVersions(
+                                System.getProperty("java.version"), "1.7") >= 0) {
+                yCor = -5;
+            }
+        } catch (Exceptions.IllegalVersionException e) {
+            Tools.appWarning(e.getMessage(), e);
+        }
         final int endX = (int) endP.getX() + toX;
-        final int endY = (int) endP.getY() + toY;
+        final int endY = (int) endP.getY() + toY + yCor;
         if (MOVE_MOUSE_FAST) {
             robot.mouseMove(endX, endY);
             return;
@@ -3028,7 +3160,8 @@ public final class RoboTest {
         info("start register movement in 3 seconds");
         sleepNoFactor(3000);
         final Thread thread = new Thread(new Runnable() {
-            @Override public void run() {
+            @Override
+            public void run() {
                 Point2D prevP = new Point2D.Double(0, 0);
                 Point2D prevPrevP = new Point2D.Double(0, 0);
                 while (true) {
@@ -3074,12 +3207,13 @@ public final class RoboTest {
     }
 
     private static boolean dialogColorTest(final String text) {
-        if (!isColor(125, 370, AppDefaults.BACKGROUND, true)) {
-            info(text + ": color test: error");
-            return false;
-        } else {
-            return true;
-        }
+        return true;
+        //if (!isColor(125, 370, AppDefaults.BACKGROUND, true)) {
+        //    info(text + ": color test: error");
+        //    return false;
+        //} else {
+        //    return true;
+        //}
     }
 
     private static void addDrbdResource(final int blockDevY) {
@@ -3179,7 +3313,7 @@ public final class RoboTest {
         leftClick(); /* finish */
         sleep(10000);
         checkDRBDTest(drbdTest, 1.1);
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 2; i++) {
             info("i: " + i);
             removeDrbdVolume(false);
         }
@@ -3339,6 +3473,39 @@ public final class RoboTest {
         }
         checkDRBDTest(drbdTest, 2);
 
+        moveTo(730, 475); /* rectangle */
+        leftPress();
+        moveTo(225, 115);
+        leftRelease();
+
+        moveTo(334, blockDevY);
+        rightClick();
+        moveToSlowly(400, blockDevY + 160);
+
+        press(KeyEvent.VK_DOWN);
+        sleep(500);
+        press(KeyEvent.VK_DOWN);
+        sleep(500);
+        press(KeyEvent.VK_DOWN);
+        sleep(500);
+        press(KeyEvent.VK_DOWN);
+        sleep(500);
+        press(KeyEvent.VK_ENTER); /* detach */
+        checkDRBDTest(drbdTest, 2.01);
+
+        moveTo(400, blockDevY);
+        rightClick();
+        press(KeyEvent.VK_DOWN);
+        sleep(500);
+        press(KeyEvent.VK_DOWN);
+        sleep(500);
+        press(KeyEvent.VK_DOWN);
+        sleep(500);
+        press(KeyEvent.VK_DOWN);
+        sleep(500);
+        press(KeyEvent.VK_ENTER); /* attach */
+        checkDRBDTest(drbdTest, 2.02);
+
         moveTo(480, 202); /* select r0 */
         leftClick();
         sleep(2000);
@@ -3358,6 +3525,7 @@ public final class RoboTest {
         sleep(200);
         press(KeyEvent.VK_ENTER);
         sleep(2000);
+        Tools.getGUIData().expandTerminalSplitPane(1);
 
         moveTo(970, 432 + correctionY); /* wfc timeout */
         leftClick();
@@ -3370,13 +3538,13 @@ public final class RoboTest {
             correctionYPlus = 20;
         }
 
-        moveTo(940, 615 + correctionY + correctionYPlus); /* max buffers */
+        moveTo(940, 610 + correctionY + correctionYPlus); /* max buffers */
         leftClick();
         press(KeyEvent.VK_BACK_SPACE);
         sleep(1000);
         press(KeyEvent.VK_5);
         sleep(1000);
-        moveTo(1000, 615 + correctionY + correctionYPlus);/* max buffers unit */
+        moveTo(1000, 610 + correctionY + correctionYPlus); /* max buffers unit*/
         leftClick();
         sleep(1000);
         press(KeyEvent.VK_DOWN);
@@ -3384,11 +3552,20 @@ public final class RoboTest {
         press(KeyEvent.VK_ENTER);
         sleep(2000);
 
-        moveTo(1090, 250);
+        moveTo(1100, 250);
         leftPress(); /* scroll bar */
-        moveTo(1090, 500);
+        moveTo(1100, 500);
         leftRelease();
-        moveTo(950, 525 + correctionY + correctionYPlus); /* after */
+        try {
+            if (Tools.compareVersions(cluster.getHostsArray()[0].getDrbdVersion(),
+                                      "8.3.7") <= 0) {
+                moveTo(950, 620 + correctionY + correctionYPlus); /* after */
+            } else {
+                moveTo(950, 525 + correctionY + correctionYPlus); /* after */
+            }
+        } catch (Exceptions.IllegalVersionException e) {
+            Tools.appWarning(e.getMessage(), e);
+        }
         leftClick();
         sleep(1000);
         press(KeyEvent.VK_DOWN);
@@ -3396,9 +3573,9 @@ public final class RoboTest {
         press(KeyEvent.VK_ENTER);
         sleep(1000);
 
-        moveTo(1090, 502);
+        moveTo(1100, 502);
         leftPress(); /* scroll bar */
-        moveTo(1090, 250);
+        moveTo(1100, 250);
         leftRelease();
 
         moveTo(814, 141);
@@ -3471,7 +3648,7 @@ public final class RoboTest {
         press(KeyEvent.VK_5);
         sleep(2000);
 
-        moveTo(950, 615 + correctionY + correctionYPlus); /* max buffers */
+        moveTo(950, 613 + correctionY + correctionYPlus); /* max buffers */
         leftClick();
         sleep(1000);
         leftClick();
@@ -3486,7 +3663,7 @@ public final class RoboTest {
         sleep(500);
         press(KeyEvent.VK_8);
         sleep(500);
-        moveTo(1000, 615 + correctionY + correctionYPlus); /* max buffers unit */
+        moveTo(1000, 613 + correctionY + correctionYPlus); /* max buffers unit*/
         leftClick();
         sleep(1000);
         press(KeyEvent.VK_UP);
@@ -3494,11 +3671,20 @@ public final class RoboTest {
         press(KeyEvent.VK_ENTER);
         sleep(2000);
 
-        moveTo(1090, 250);
+        moveTo(1100, 250);
         leftPress(); /* scroll bar */
-        moveTo(1090, 500);
+        moveTo(1100, 500);
         leftRelease();
-        moveTo(950, 525 + correctionY + correctionYPlus); /* after */
+        try {
+            if (Tools.compareVersions(cluster.getHostsArray()[0].getDrbdVersion(),
+                                      "8.3.7") <= 0) {
+                moveTo(950, 620 + correctionY + correctionYPlus); /* after */
+            } else {
+                moveTo(950, 525 + correctionY + correctionYPlus); /* after */
+            }
+        } catch (Exceptions.IllegalVersionException e) {
+            Tools.appWarning(e.getMessage(), e);
+        }
         leftClick();
         sleep(1000);
         press(KeyEvent.VK_UP);
@@ -3506,9 +3692,9 @@ public final class RoboTest {
         press(KeyEvent.VK_ENTER);
         sleep(1000);
 
-        moveTo(1090, 502);
+        moveTo(1100, 502);
         leftPress(); /* scroll bar */
-        moveTo(1090, 250);
+        moveTo(1100, 250);
         leftRelease();
 
         moveTo(814, 141);
@@ -3730,8 +3916,10 @@ public final class RoboTest {
     }
 
     /** VM Test 1. */
-    private static void startVMTest1(final String vmTest, final int count) {
-        slowFactor = 0.2f;
+    private static void startVMTest(final String vmTest,
+                                    final String type,
+                                    final int count) {
+        slowFactor = 1f;
         aborted = false;
         String name = "dmc";
         final int count2 = 3;
@@ -3748,7 +3936,7 @@ public final class RoboTest {
             moveTo(159, 205); /* new domain */
             leftClick();
             dialogColorTest("new domain");
-            moveTo(450, 317); /* domain name */
+            moveTo(450, 365); /* domain name */
             leftClick();
             press(KeyEvent.VK_D);
             sleep(200);
@@ -3760,40 +3948,99 @@ public final class RoboTest {
                 press(KeyEvent.VK_I); /* dmci, dmcii, etc. */
                 sleep(200);
             }
-            moveTo(730, 522);
+            /* type */
+            moveTo(450, 345); /* domain name */
             leftClick();
-            dialogColorTest("source file");
-            //press(KeyEvent.VK_ENTER);
-
-            moveTo(593, 392); /* source file */
-            sleep(2000);
-            leftClick();
-            sleep(2000);
-            press(KeyEvent.VK_T);
-            sleep(200);
-            press(KeyEvent.VK_E);
-            sleep(200);
-            press(KeyEvent.VK_S);
-            sleep(200);
-            press(KeyEvent.VK_T);
-            sleep(2000);
-            for (int i = 0; i < count2; i++) {
-                moveTo(600, 327); /* disk/block device */
-                leftClick();
+            sleep(1000);
+            if ("lxc".equals(type)) {
+                press(KeyEvent.VK_DOWN);
                 sleep(1000);
-                moveTo(430, 327); /* image */
-                leftClick();
+                press(KeyEvent.VK_DOWN);
                 sleep(1000);
+                press(KeyEvent.VK_DOWN);
+                sleep(1000);
+                press(KeyEvent.VK_ENTER);
+                sleep(3000);
             }
 
+            /* next */
             moveTo(730, 522);
             leftClick();
-            //press(KeyEvent.VK_ENTER);
-            sleep(5000);
-            dialogColorTest("disk image");
-            moveTo(730, 522);
-            leftClick();
-            //press(KeyEvent.VK_ENTER); /* storage */
+
+            if ("lxc".equals(type)) {
+                /* filesystem */
+                dialogColorTest("filesystem");
+                moveTo(593, 372);
+                sleep(2000);
+                leftClick();
+                sleep(2000);
+                press(KeyEvent.VK_DOWN);
+                sleep(200);
+                press(KeyEvent.VK_DOWN);
+                sleep(200);
+                press(KeyEvent.VK_ENTER);
+                sleep(200);
+                press(KeyEvent.VK_SLASH);
+                sleep(200);
+                press(KeyEvent.VK_D);
+                sleep(200);
+                press(KeyEvent.VK_M);
+                sleep(200);
+                press(KeyEvent.VK_C);
+                sleep(200);
+                for (int k = 0; k < j; k++) {
+                    press(KeyEvent.VK_I); /* dmci, dmcii, etc. */
+                    sleep(200);
+                }
+                press(KeyEvent.VK_SLASH);
+                sleep(200);
+                press(KeyEvent.VK_R);
+                sleep(200);
+                press(KeyEvent.VK_O);
+                sleep(200);
+                press(KeyEvent.VK_O);
+                sleep(200);
+                press(KeyEvent.VK_T);
+                sleep(200);
+                press(KeyEvent.VK_F);
+                sleep(200);
+                press(KeyEvent.VK_S);
+                sleep(2000);
+                moveTo(730, 522);
+                leftClick();
+            } else {
+
+                /* source file */
+                dialogColorTest("source file");
+
+                moveTo(593, 400);
+                sleep(2000);
+                leftClick();
+                sleep(2000);
+                press(KeyEvent.VK_T);
+                sleep(200);
+                press(KeyEvent.VK_E);
+                sleep(200);
+                press(KeyEvent.VK_S);
+                sleep(200);
+                press(KeyEvent.VK_T);
+                sleep(2000);
+                for (int i = 0; i < count2; i++) {
+                    moveTo(600, 327); /* disk/block device */
+                    leftClick();
+                    sleep(1000);
+                    moveTo(430, 327); /* image */
+                    leftClick();
+                    sleep(1000);
+                }
+
+                moveTo(730, 522);
+                leftClick();
+                sleep(5000);
+                dialogColorTest("disk image");
+                moveTo(730, 522);
+                leftClick();
+            }
             sleep(5000);
             dialogColorTest("network");
             for (int i = 0; i < count2; i++) {
@@ -3808,19 +4055,20 @@ public final class RoboTest {
             leftClick();
             //press(KeyEvent.VK_ENTER); /* network */
             sleep(5000);
-            dialogColorTest("display");
-            for (int i = 0; i < count2; i++) {
-                moveTo(600, 327); /* sdl */
+            if (!"lxc".equals(type)) {
+                dialogColorTest("display");
+                for (int i = 0; i < count2; i++) {
+                    moveTo(600, 327); /* sdl */
+                    leftClick();
+                    sleep(1000);
+                    moveTo(430, 327); /* vnc */
+                    leftClick();
+                    sleep(1000);
+                }
+                moveTo(730, 522);
                 leftClick();
-                sleep(1000);
-                moveTo(430, 327); /* vnc */
-                leftClick();
-                sleep(1000);
+                sleep(5000);
             }
-            moveTo(730, 522);
-            leftClick();
-            //press(KeyEvent.VK_ENTER); /* display */
-            sleep(5000);
             dialogColorTest("create config");
 
             final int yMoreHosts = 30 * (cluster.getHosts().size() - 1);
@@ -3828,39 +4076,42 @@ public final class RoboTest {
             sleep(4000);
             leftClick();
             checkVMTest(vmTest, 2, name);
+            sleep(8000);
 
             if (cluster.getHosts().size() > 1) {
-                /* two hosts */
-                moveTo(410, 326); /* deselect first */
-                leftClick();
-                sleep(2000);
-                moveTo(560, 362 + yMoreHosts); /* create config */
-                sleep(2000);
-                leftClick();
-                checkVMTest(cluster.getHostsArray()[0], vmTest, 1, name);
-                checkVMTest(cluster.getHostsArray()[1], vmTest, 2, name);
+                for (int i = 0; i < 3; i ++) {
+                    /* two hosts */
+                    moveTo(410, 326); /* deselect first */
+                    leftClick();
+                    sleep(2000);
+                    moveTo(560, 362 + yMoreHosts); /* create config */
+                    sleep(2000);
+                    leftClick();
+                    checkVMTest(cluster.getHostsArray()[0], vmTest, 1, name);
+                    checkVMTest(cluster.getHostsArray()[1], vmTest, 2, name);
 
-                moveTo(410, 326); /* select first */
-                sleep(1000);
-                leftClick();
-                sleep(1000);
-                moveTo(410, 361); /* deselect second */
-                sleep(1000);
-                leftClick();
-                sleep(1000);
-                moveTo(560, 362 + yMoreHosts); /* create config */
-                sleep(2000);
-                leftClick();
-                checkVMTest(cluster.getHostsArray()[0], vmTest, 2, name);
-                checkVMTest(cluster.getHostsArray()[1], vmTest, 1, name);
+                    moveTo(410, 326); /* select first */
+                    sleep(1000);
+                    leftClick();
+                    sleep(1000);
+                    moveTo(410, 361); /* deselect second */
+                    sleep(1000);
+                    leftClick();
+                    sleep(1000);
+                    moveTo(560, 362 + yMoreHosts); /* create config */
+                    sleep(2000);
+                    leftClick();
+                    checkVMTest(cluster.getHostsArray()[0], vmTest, 2, name);
+                    checkVMTest(cluster.getHostsArray()[1], vmTest, 1, name);
 
-                moveTo(410, 361); /* select second */
-                leftClick();
-                sleep(2000);
-                moveTo(560, 362 + yMoreHosts); /* create config */
-                sleep(4000);
-                leftClick();
-                checkVMTest(vmTest, 2, name);
+                    moveTo(410, 361); /* select second */
+                    leftClick();
+                    sleep(2000);
+                    moveTo(560, 362 + yMoreHosts); /* create config */
+                    sleep(4000);
+                    leftClick();
+                    checkVMTest(vmTest, 2, name);
+                }
             }
 
             sleepNoFactor(2000);
@@ -3868,7 +4119,7 @@ public final class RoboTest {
             leftClick();
             sleepNoFactor(5000);
 
-            moveTo(620, 432 + yMoreHosts); /* number of cpus */
+            moveTo(620, 452 + yMoreHosts); /* number of cpus */
             sleep(1000);
             leftClick();
             sleep(500);
@@ -3882,60 +4133,83 @@ public final class RoboTest {
             sleep(1000);
             checkVMTest(vmTest, 3, name);
 
-            /* disk readonly */
-            moveTo(56, 201); /* popup */
-            leftClick();
-            sleep(1000);
-            press(KeyEvent.VK_DOWN);
-            for (int down = 0; down < j; down++) {
-                sleep(200);
+            if (j  == 0 && !"lxc".equals(type)) {
+                /* add disk */
+                moveTo(80, 200);
+                rightClick();
                 press(KeyEvent.VK_DOWN);
+                press(KeyEvent.VK_DOWN);
+                press(KeyEvent.VK_DOWN);
+                press(KeyEvent.VK_RIGHT);
+                press(KeyEvent.VK_ENTER);
+
+                moveTo(550, 265);
+                leftClick(); /* block device */
+                moveTo(510, 390);
+                leftClick();
+                press(KeyEvent.VK_SLASH);
+                press(KeyEvent.VK_D);
+                press(KeyEvent.VK_E);
+                press(KeyEvent.VK_V);
+
+                press(KeyEvent.VK_SLASH);
+                press(KeyEvent.VK_S);
+                press(KeyEvent.VK_D);
+                press(KeyEvent.VK_A);
+                press(KeyEvent.VK_1);
+                press(KeyEvent.VK_ENTER);
+                moveTo(240, 130);
+                leftClick(); /* apply */
+                checkVMTest(vmTest, 3.01, name);
+
+                /* remove disk */
+                moveTo(100, 225);
+                rightClick();
+                press(KeyEvent.VK_DOWN);
+                press(KeyEvent.VK_ENTER); /* remove */
+                confirmRemove();
+                checkVMTest(vmTest, 3, name);
             }
 
-            //moveTo(100, 232 + j * 18); /* choose disk */
-            //sleep(1000);
-            //leftClick();
-            //moveTo(1100, 250);
-            //leftPress(); /* scroll bar */
-            //moveTo(1100, 362);
-            //leftRelease();
+            if (!"lxc".equals(type)) {
+                /* disk readonly */
+                moveTo(56, 201); /* popup */
+                leftClick();
+                sleep(1000);
+                press(KeyEvent.VK_DOWN);
+                for (int down = 0; down < j; down++) {
+                    sleep(200);
+                    press(KeyEvent.VK_DOWN);
+                }
 
-            //sleep(1000);
-            //moveTo(400, 402 + yMoreHosts); /* choose disk */
-            //sleep(1000);
-            //leftClick();
-            //sleep(1000);
+                moveTo(390, 485); /* readonly */
+                sleep(1000);
+                leftClick();
+                sleep(1000);
+                moveTo(250, 142); /* apply */
+                sleep(1000);
+                leftClick();
+                checkVMTest(vmTest, 3.1, name);
+                sleep(1000);
+		//moveTo(1100, 250);
+		//leftPress(); /* scroll bar */
+		//moveTo(1100, 502);
+		//leftRelease();
+                Tools.getGUIData().expandTerminalSplitPane(1);
+                moveTo(390, 588); /* readonly */
+                sleep(1000);
+                leftClick();
 
-            moveTo(390, 492); /* readonly */
-            sleep(1000);
-            leftClick();
-            sleep(1000);
-            moveTo(250, 142); /* apply */
-            sleep(1000);
-            leftClick();
-            checkVMTest(vmTest, 3.1, name);
-            sleep(1000);
-            moveTo(390, 597); /* readonly */
-            sleep(1000);
-            leftClick();
+                sleep(1000);
+                moveTo(950, 132); /* host overview */
+                sleep(1000);
+                leftClick();
+                sleep(1000);
 
-            sleep(1000);
-            moveTo(950, 132); /* host overview */
-            sleep(1000);
-            leftClick();
-            sleep(1000);
-
-            moveTo(250, 142); /* host apply */
-            leftClick();
-            checkVMTest(vmTest, 3.2, name);
-
-            /* remove interface */
-
-            // ...
-            //moveTo(1100, 362);
-            //leftPress(); /* scroll bar back */
-            //moveTo(1100, 152);
-            //leftRelease();
+                moveTo(250, 142); /* host apply */
+                leftClick();
+                checkVMTest(vmTest, 3.2, name);
+            }
 
             names.add(name);
             for (final String n : names) {
@@ -3962,6 +4236,12 @@ public final class RoboTest {
             leftClick();
             sleepNoFactor(5000);
         }
+    }
+
+    /** VM Test 1. */
+    private static void startVMTest1(final String vmTest,
+                                     final int count) {
+        startVMTest(vmTest, "kvm", count);
     }
 
     /** Cluster wizard locked until focus is lost. */
@@ -3999,6 +4279,12 @@ public final class RoboTest {
             leftClick();
             sleep(1000);
         }
+    }
+
+    /** VM Test 1. */
+    private static void startVMTest5(final String vmTest,
+                                     final int count) {
+        startVMTest(vmTest, "lxc", count);
     }
 
     private static void saveAndExit() {
