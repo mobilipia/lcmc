@@ -1681,7 +1681,7 @@ public final class RoboTest {
 
     /** TEST 2. */
     private static void startTest2() {
-        slowFactor = 0.3f;
+        slowFactor = 0.6f;
         aborted = false;
         final int dummy1X = 235;
         final int dummy1Y = 207;
@@ -1871,7 +1871,7 @@ public final class RoboTest {
 
     /** TEST 4. */
     private static void startTest4() {
-        slowFactor = 0.5f;
+        slowFactor = 0.6f;
         aborted = false;
         final int dummy1X = 235;
         final int dummy1Y = 207;
