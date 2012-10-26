@@ -1620,9 +1620,7 @@ public final class RoboTest {
         moveTo("Remove All Services");
         sleep(3000);
         leftClick();
-        if (!isColor(365, 360, AppDefaults.BACKGROUND, true)) {
-            info("remove everything color: failed");
-        }
+        dialogColorTest("remove everything");
         confirmRemove();
         sleep(3000);
         leftClick();
@@ -2747,9 +2745,7 @@ public final class RoboTest {
     /** Confirms remove dialog. */
     private static void confirmRemove() {
         sleep(1000);
-        if (!isColor(365, 360, AppDefaults.BACKGROUND, true)) {
-            info("confirm remove color: error");
-        }
+        dialogColorTest("confirm remove");
         press(KeyEvent.VK_TAB);
         sleep(500);
         press(KeyEvent.VK_TAB);
@@ -3435,15 +3431,18 @@ public final class RoboTest {
     }
 
     private static boolean dialogColorTest(final String text) {
+        if (aborted) {
+            return false;
+        }
         sleepNoFactor(2000);
         final Component dialog = getFocusedWindow();
         for (int i = 0; i < 60; i++) {
-            if (dialog instanceof JDialog) {
+            if (dialog instanceof JDialog || aborted) {
                 break;
             }
             sleepNoFactor(1000);
         }
-        if (!(dialog instanceof JDialog)) {
+        if (!(dialog instanceof JDialog) || aborted) {
             info(text + ": color test: no dialog");
             return false;
         }
@@ -3530,14 +3529,15 @@ public final class RoboTest {
     }
 
     private static void removeDrbdVolume(final boolean really) {
+        if (aborted) {
+            return;
+        }
         moveTo(480, 202); /* rsc popup */
         rightClick(); /* remove */
         moveTo("Remove DRBD Volume"); /* remove */
         leftClick();
         Tools.sleep(10000);
-        if (!isColor(365, 360, AppDefaults.BACKGROUND, true)) {
-            info("remove drbd volume color: error");
-        }
+        dialogColorTest("removeDrbdVolume");
         if (really) {
             confirmRemove();
         } else {
@@ -4573,9 +4573,7 @@ public final class RoboTest {
             moveTo("Remove Domain");
             leftClick();
             sleepNoFactor(2000);
-            if (!isColor(365, 360, AppDefaults.BACKGROUND, true)) {
-                info("remove VM color: error");
-            }
+            dialogColorTest("remove VM");
             confirmRemove();
             leftClick();
             sleepNoFactor(5000);
