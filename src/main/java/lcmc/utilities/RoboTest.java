@@ -3097,17 +3097,8 @@ public final class RoboTest {
         final Point2D appP =
                      Tools.getGUIData().getMainFrameContentPane()
                                         .getLocationOnScreen();
-        int yCor = 0;
-        try {
-            if (Tools.compareVersions(
-                            System.getProperty("java.version"), "1.0.8") >= 0) {
-                yCor = -5;
-            }
-        } catch (Exceptions.IllegalVersionException e) {
-            Tools.appWarning(e.getMessage(), e);
-        }
         final int appX = (int) appP.getX() + fromX;
-        final int appY = (int) appP.getY() + fromY + yCor;
+        final int appY = (int) appP.getY() + fromY;
         for (int i = 0; i < 7; i++) {
             boolean isColor = false;
             for (int y = -20; y < 20; y++) {
@@ -3126,6 +3117,9 @@ public final class RoboTest {
                                                   appY + y))) {
                         isColor = true;
                     }
+                }
+                if (aborted) {
+                    return false;
                 }
             }
             if (!expected && !isColor) {
@@ -3441,13 +3435,30 @@ public final class RoboTest {
     }
 
     private static boolean dialogColorTest(final String text) {
-        return true;
-        //if (!isColor(125, 370, AppDefaults.BACKGROUND, true)) {
-        //    info(text + ": color test: error");
-        //    return false;
-        //} else {
-        //    return true;
-        //}
+        sleepNoFactor(2000);
+        final Component dialog = getFocusedWindow();
+        for (int i = 0; i < 60; i++) {
+            if (dialog instanceof JDialog) {
+                break;
+            }
+            sleepNoFactor(1000);
+        }
+        if (!(dialog instanceof JDialog)) {
+            info(text + ": color test: no dialog");
+            return false;
+        }
+        moveToAbs((int) dialog.getLocationOnScreen().getX() + 5,
+                  (int) dialog.getLocationOnScreen().getY() + 40);
+        final Point2D p = getAppPosition();
+        if (!isColor((int) p.getX(),
+                     (int) p.getY(),
+                     AppDefaults.BACKGROUND,
+                     true)) {
+            info(text + ": color test: error");
+            return false;
+        } else {
+            return true;
+        }
     }
 
     private static void addDrbdResource(final int blockDevY) {
@@ -3509,7 +3520,7 @@ public final class RoboTest {
 
     private static void addMetaData() {
         drbdNext();
-        sleep(10000);
+        sleep(30000);
         dialogColorTest("addMetaData");
     }
 
@@ -3523,6 +3534,7 @@ public final class RoboTest {
         rightClick(); /* remove */
         moveTo("Remove DRBD Volume"); /* remove */
         leftClick();
+        Tools.sleep(10000);
         if (!isColor(365, 360, AppDefaults.BACKGROUND, true)) {
             info("remove drbd volume color: error");
         }
@@ -3636,6 +3648,7 @@ public final class RoboTest {
         chooseDrbdResource();
         addDrbdVolume();
         addBlockDevice();
+        sleep(1000);
         addBlockDevice();
         sleep(20000);
         addMetaData();
