@@ -82,10 +82,8 @@ public final class RoboTest {
         if (MouseInfo.getPointerInfo() == null) {
             return false;
         }
-        final Point2D loc =
-            Tools.getGUIData().getMainFrameContentPane().getLocationOnScreen();
-        Point2D p = MouseInfo.getPointerInfo().getLocation();
-        double x = p.getX() - loc.getX();
+        Point2D p = getAppPosition();
+        double x = p.getX();
         if (x > 1536 || x < -100) {
             int i = 0;
             while (x > 1536 || x < -100) {
@@ -94,8 +92,8 @@ public final class RoboTest {
                 }
                 Tools.sleep(500);
                 if (MouseInfo.getPointerInfo() != null) {
-                    p = MouseInfo.getPointerInfo().getLocation();
-                    x = p.getX() - loc.getX();
+                    p = getAppPosition();
+                    x = p.getX();
                 }
                 i++;
             }
@@ -229,19 +227,16 @@ public final class RoboTest {
                     return;
                 }
 
-                final Point2D locP =
-                    Tools.getGUIData().getMainFrameContentPane()
-                                                    .getLocationOnScreen();
                 robot = rbt;
                 final int xOffset = getOffset();
-                final Point2D origP = MouseInfo.getPointerInfo().getLocation();
-                final int origX = (int) (origP.getX() - locP.getX());
-                final int origY = (int) (origP.getY() - locP.getY());
+                final Point2D pos = getAppPosition();
+                final int origX = (int) pos.getX();
+                final int origY = (int) pos.getY();
                 info("move mouse to the end position");
                 sleepNoFactor(5000);
-                final Point2D endP = MouseInfo.getPointerInfo().getLocation();
-                final int endX = (int) (endP.getX() - locP.getX());
-                final int endY = (int) (endP.getY() - locP.getY());
+                final Point2D endP = getAppPosition();
+                final int endX = (int) endP.getX();
+                final int endY = (int) endP.getY();
                 int destX = origX;
                 int destY = origY;
                 info("test started");
@@ -3412,14 +3407,8 @@ public final class RoboTest {
                 Point2D prevP = new Point2D.Double(0, 0);
                 Point2D prevPrevP = new Point2D.Double(0, 0);
                 while (true) {
-                    final Point2D loc =
-                                Tools.getGUIData().getMainFrameContentPane()
-                                                        .getLocationOnScreen();
-                    final Point2D pos =
-                                      MouseInfo.getPointerInfo().getLocation();
-                    final Point2D newPos = new Point2D.Double(
-                                                      pos.getX() - loc.getX(),
-                                                      pos.getY() - loc.getY());
+                    final Point2D newPos = getAppPosition();
+
                     sleepNoFactor(2000);
                     if (newPos.equals(prevP) && !prevPrevP.equals(prevP)) {
                         info("moveTo("
@@ -3443,10 +3432,8 @@ public final class RoboTest {
     private static int getBlockDevY() {
         info("move to position, start in 10 seconds");
         sleepNoFactor(10000);
-        final Point2D loc = Tools.getGUIData().getMainFrameContentPane()
-                                                .getLocationOnScreen();
-        final Point2D pos = MouseInfo.getPointerInfo().getLocation();
-        final int y = (int) (pos.getY() - loc.getY());
+        final Point2D pos = getAppPosition();
+        final int y = (int) pos.getY();
         if (y > 532) {
             return 267;
         }
@@ -4600,7 +4587,12 @@ public final class RoboTest {
             sleep(500);
             leftClick();
             sleep(1000);
-            if (!isColor(480, 322, new Color(255, 100, 100), true)) {
+            moveTo("Domain name", Widget.MTextField.class);
+            final Point2D p = getAppPosition();
+            if (!isColor((int) p.getX(),
+                         (int) p.getY(),
+                         new Color(255, 100, 100),
+                         true)) {
                 info(vmTest + " 1: error");
                 break;
             }
@@ -4608,7 +4600,10 @@ public final class RoboTest {
             for (int error = 0; error < 5; error++) {
                 sleep(100);
                 press(KeyEvent.VK_X);
-                if (!isColor(480, 322, new Color(255, 100, 100), false)) {
+                if (!isColor((int) p.getX(),
+                             (int) p.getY(),
+                             new Color(255, 100, 100),
+                             false)) {
                     sleepNoFactor(1000);
                     ok = true;
                     break;
@@ -4748,5 +4743,14 @@ public final class RoboTest {
         return findComponent(text,
                              (Container) getFocusedWindow(),
                              new Integer[]{number});
+    }
+
+    private static Point2D getAppPosition() {
+        final Point2D loc =
+             Tools.getGUIData().getMainFrameContentPane().getLocationOnScreen();
+        final Point2D pos = MouseInfo.getPointerInfo().getLocation();
+        final Point2D newPos = new Point2D.Double(pos.getX() - loc.getX(),
+                                                  pos.getY() - loc.getY());
+        return newPos;
     }
 }
