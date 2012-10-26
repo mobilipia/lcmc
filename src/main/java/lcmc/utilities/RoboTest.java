@@ -3604,7 +3604,7 @@ public final class RoboTest {
         sleep(1000);
         moveTo("Resize LV");
         leftClick();
-        sleep(2000);
+        sleep(5000);
         press(KeyEvent.VK_2);
         press(KeyEvent.VK_5);
         press(KeyEvent.VK_2);
