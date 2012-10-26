@@ -3420,8 +3420,8 @@ public final class RoboTest {
 
     /** Return vertical position of the blockdevices. */
     private static int getBlockDevY() {
-        info("move to position, start in 10 seconds");
-        sleepNoFactor(10000);
+        info("move to position, start in 3 seconds");
+        sleepNoFactor(3000);
         final Point2D pos = getAppPosition();
         final int y = (int) pos.getY();
         if (y > 532) {
