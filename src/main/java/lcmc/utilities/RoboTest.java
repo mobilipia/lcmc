@@ -3143,17 +3143,8 @@ public final class RoboTest {
         final int origY = (int) origP.getY();
         final Point2D endP =
             Tools.getGUIData().getMainFrameContentPane().getLocationOnScreen();
-        int yCor = 0;
-        try {
-            if (Tools.compareVersions(
-                                System.getProperty("java.version"), "1.7") >= 0) {
-                yCor = -5;
-            }
-        } catch (Exceptions.IllegalVersionException e) {
-            Tools.appWarning(e.getMessage(), e);
-        }
         final int endX = (int) endP.getX() + toX;
-        final int endY = (int) endP.getY() + toY + yCor;
+        final int endY = (int) endP.getY() + toY;
         moveToAbs(endX, endY);
     }
 
@@ -4424,7 +4415,7 @@ public final class RoboTest {
             }
             dialogColorTest("create config");
 
-            final int yMoreHosts = 30 * (cluster.getHosts().size() - 1);
+            sleep(4000);
             moveTo("Create Config");
             sleep(4000);
             leftClick();
