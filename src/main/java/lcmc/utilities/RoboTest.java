@@ -1568,7 +1568,6 @@ public final class RoboTest {
         stopGroup(1020, 132); /* actions menu stop */
         sleep(5000);
         stopGroup(statefulX, statefulY);
-        stopEverything(); /* to be sure */
         sleep(5000);
         checkTest(testName, 29);
 
