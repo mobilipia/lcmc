@@ -1660,7 +1660,6 @@ public final class RoboTest {
         }
         final String quorum = cluster.getBrowser()
                     .getClusterStatus().getGlobalParam("no-quorum-policy");
-        System.out.println("quorum: " + quorum);
         if (!"ignore".equals(quorum)) {
             moveTo("No Quorum Policy", JComboBox.class);
             leftClick();
